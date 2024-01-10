@@ -3,18 +3,18 @@ import matplotlib.pyplot as plt
 
 def computeLoss(A, B, I):
     # Compute the loss function
-    L = 0
-    L1 = B*A-I
-    for i in range(len(L1[0])):
-        for j in range(len(L1[1])):
-            L += L1[i, j]*L1[i,j]
+    L = np.sum( (B@A-I)**2 )
+    # L1 = B@A-I
+    # for i in range(len(L1[0])):
+    #     for j in range(len(L1[1])):
+    #         L += L1[i, j]*L1[i,j]
 
     # return the loss value
     return L
 
 def computeGradient(A, B, I):
     # Compute the gradient matrix
-    G = 2*(B*A-I)*np.transpose(A)
+    G = 2*(B@A-I)@A.T
 
     # return the gradient matrix
     return G
@@ -34,7 +34,7 @@ def optmizeByIterationNumber( step, iteration, A, B, I):
     plt.plot(Larray)
     plt.title('Graph of Loss value over the numer of iteration')
     plt.xlabel('Index')
-    plt.ylabel('Loss Value')
+    plt.ylabel('Loss Value min is ')
     plt.grid(True)
     plt.show()
         
@@ -55,7 +55,7 @@ def optmizeByErrorLimit( step, limit, A, B, I):
     plt.plot(Larray)
     plt.title('Graph of Loss value over the number of iteration')
     plt.xlabel('Index')
-    plt.ylabel('Loss Value')
+    plt.ylabel('Loss Value min is ',(min(Larray)))
     plt.grid(True)
     plt.show()
         
@@ -68,7 +68,9 @@ def doTheLab(A, step, iteration, limit):
 
     L1, B1 = optmizeByIterationNumber(step, iteration, A, B, I)
 
-    print("Computed identity : ", B1*A)
+    print("Initial matrix : \n", A)
+    print("Computed inverse : \n", np.round(B1, decimals=3))
+    print("Computed identity : \n", np.round(B1 @ A, decimals=3))
 
 A = np.array([[3,4,1],
               [5,2,3],
@@ -87,11 +89,11 @@ A3 = np.array([[2,1,1,2],
               [3,1,4,1]])
 
 errorLim = 1e-12
-step = 0.01
+step = 0.005
 iteration = 1000
 
 print("Starting process")
-doTheLab(A3, step, iteration, errorLim)
+doTheLab(A, step, iteration, errorLim)
 
 
 
