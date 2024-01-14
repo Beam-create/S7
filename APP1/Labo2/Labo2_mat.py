@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 
 # ------------------------------- Utils functions ------------------------------
 def assert_almost_equal(a, b):
+
     assert np.mean(np.abs(a - b)) < 1e-5
 
 
@@ -29,6 +30,7 @@ def test_grad(input_shape, forward, backward, X=None, output_grad=None):
         numerical_grad[i] = np.sum((y1 - y0) * output_grad) / (2 * h)
         it.iternext()
 
+
     error = np.mean(np.abs(analytical_grad - numerical_grad))
     assert_almost_equal(error, 0)        
 
@@ -42,10 +44,15 @@ def fully_connected_forward(W, b, X):
 
 
 def fully_connected_backward(W, b, X, output_grad):
-    print(W.shape)
-    print(output_grad.shape)
+
+    dX = (W.T @ output_grad.T).T
     
-    return (W.T @ output_grad.T).T
+    dW = (X.T @ output_grad).T
+
+    ## Pourquoi somme de l'axe 0? voir équation 89 note de cours
+    db =  np.sum(output_grad, 0)
+    
+    return dX, dW, db
 
 
 def relu_forward(X):
@@ -69,14 +76,17 @@ def sigmoid_backward(X, output_grad):
 
 
 def bce_forward(x, target):
+    # Pourquoi moyenne? voir équation 41 notes de cours
     L = np.mean(-target * np.log(x) - (1-target)*np.log(1-x))
 
     return L
 
 
 def bce_backward(x, target):
-    dL = -(target/x) + ((1-target)/(1-x))
-    print(dL)
+    
+    # Pourquoi /len(x) ? voir équation 43 notes de cours
+    dL = (-(target/x) + ((1-target)/(1-x)))/len(x)
+    
 
     return dL
 
