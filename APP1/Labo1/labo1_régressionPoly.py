@@ -64,7 +64,7 @@ y = np.array([0.02,0.03,-0.17,-0.12,-0.37,-0.25,-0.10,-0.14,0.53,0.71,1.53])
 # Find vector by optimization
 iteration = 1000
 step = 0.001
-N = 7
+N = 2
 L, a = optmizeByIterationNumber(x, y, N, iteration, step)
 
 print(L)
