@@ -2,6 +2,9 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+from pathlib import Path
+
+cwd_path = Path(__file__).parent
 
 
 # ------------------------------- Utils functions ------------------------------
@@ -15,6 +18,7 @@ def test_grad(input_shape, forward, backward, X=None, output_grad=None):
     output_grad = np.random.randn(*forward(x).shape) if output_grad is None else output_grad
     
     analytical_grad = backward(x, output_grad)
+    print(analytical_grad)
     numerical_grad = np.zeros_like(x)
     
     it = np.nditer(x, flags=['multi_index'], op_flags=['readwrite'])
@@ -29,50 +33,53 @@ def test_grad(input_shape, forward, backward, X=None, output_grad=None):
         
         numerical_grad[i] = np.sum((y1 - y0) * output_grad) / (2 * h)
         it.iternext()
+    print(numerical_grad)
 
     error = np.mean(np.abs(analytical_grad - numerical_grad))
     assert_almost_equal(error, 0)        
 
 
 # ------------------------------ Layer functions ------------------------------
-def fully_connected_forward(W, b, X):
+def fully_connected_forward(W: np.ndarray, b: np.ndarray, X: np.ndarray):
     # <Your code here>
-    raise NotImplementedError()
+    U = (W.dot(X.T)).T + b
+    # print(U)
+    return U
 
 
 def fully_connected_backward(W, b, X, output_grad):
-    # <Your code here>
-    raise NotImplementedError()
+    dW = np.dot(X.T, output_grad)
+    db = output_grad
+    dX = np.dot(W.T, output_grad.T)
+    return dX, dW, db
 
 
 def relu_forward(X):
-    # <Your code here>
-    raise NotImplementedError()
+    return np.maximum(0, X)
 
 
 def relu_backward(X, output_grad):
-    # <Your code here>
-    raise NotImplementedError()
+    return (X > 0) * output_grad
 
 
 def sigmoid_forward(X):
-    # <Your code here>
-    raise NotImplementedError()
+    return 1 / (1 + np.exp(-X))
 
 
 def sigmoid_backward(X, output_grad):
-    # <Your code here>
-    raise NotImplementedError()
+    return sigmoid_forward(X)*(1 - sigmoid_forward(X)) * output_grad
 
 
-def bce_forward(x, target):
-    # <Your code here>
-    raise NotImplementedError()
+def bce_forward(X, target):
+    # return -target*np.log(X)-(1-target)*np.log(1-X)
+    return np.mean(-target*np.log(X)-(1-target)*np.log(1-X))
 
 
-def bce_backward(x, target):
-    # <Your code here>
-    raise NotImplementedError()
+def bce_backward(X, target):
+    # print("bce inputs are:")
+    # print(X, target)
+    # Pas supposer diviser par len de X, pq ca fonctionne comme ca...
+    return ((-target/X)+(1-target)/(1-X))/len(X)
 
 
 # ------------------------------ Test functions ------------------------------
@@ -82,7 +89,7 @@ def test_fully_connected_forward():
     b = np.array([1])
     X = np.array([[-1.0, 0.5], [-2.0, 1.0]])
     Y = fully_connected_forward(W, b, X)
-    
+    print(f'Got: {Y[0]} and {Y[1]}')
     assert_almost_equal(Y[0], 0.5)
     assert_almost_equal(Y[1], 0.0)
     print('\tOk')
@@ -160,9 +167,9 @@ def test_sigmoid_backward():
 
 def test_bce_forward():
     print('------------test_bce_forward-------------')
-    x = np.array([0.1, 0.6])
+    X = np.array([0.1, 0.6])
     target = np.array([0.0, 1.0])
-    y = bce_forward(x, target)
+    y = bce_forward(X, target)
 
     assert_almost_equal(y, 0.3081)
     print('\tOk')
@@ -177,7 +184,7 @@ def test_bce_backward():
         return bce_forward(X, target)
     def backward(X, output_grad):
         return bce_backward(X, target)
-
+    # Est-ce qu'il y a une erreur dans le code de test?
     test_grad((2,), forward, backward, X=X, output_grad=output_grad)
     print('\tOk')
     
@@ -221,8 +228,8 @@ def train(x_train, target_train, x_val=None, target_val=None, epoch_count=100, l
     losses_train = []
     accuracies_train = []
     losses_val = []
-    accuracies_val = []    
-
+    accuracies_val = []
+    loss = 0
     for epoch in range(epoch_count):
         print('epoch={}'.format(epoch + 1))
         
@@ -248,7 +255,7 @@ def train(x_train, target_train, x_val=None, target_val=None, epoch_count=100, l
 
             # Validation: Forward pass
             # <Your code here>
-
+            y = np.zeros_like(target_val)
             # Validation: Metrics
             losses_val.append(loss)        
             predicted_classes = (y > 0.5).astype(int)
@@ -298,7 +305,7 @@ def show_decision_boundary(W1, b1, W2, b2, W3, b3):
     data = np.array(np.meshgrid(x1, x2)).T.reshape(-1,2)
     
     # <Your code here, same as forward pass in train>
-    
+    y = np.zeros(data.shape[0])
     fig = plt.figure(figsize=(5, 5), dpi=200)
     ax = fig.add_subplot(111)
     ax.imshow(1 - y.reshape(x1.size, x2.size).T, cmap='bwr', extent=[-1, 1, -1, 1], vmin=0, vmax=1)
@@ -308,7 +315,7 @@ def show_decision_boundary(W1, b1, W2, b2, W3, b3):
 def show_classification(W1, b1, W2, b2, W3, b3, X, title=''):
 
     # <Your code here, same as forward pass in train> 
-    
+    y = 0
     predicted_classes = (y > 0.5).astype(int)
 
     c1 = np.squeeze(predicted_classes==0)
@@ -322,16 +329,16 @@ def show_classification(W1, b1, W2, b2, W3, b3, X, title=''):
     fig.show()
 
 # ------------------------------------ main -----------------------------------
-mode = 'training'
+mode = 'test'
 if mode == 'test':
     test()
-elif mode == 'overfitting':
-    x_train = np.array([[0.5, 0.5], [0.75, 0.75], [0.25, 0.25], [0.1, 0.1]])
-    target_train = np.array([[0], [0], [1], [1]], dtype=int)
-    train(x_train, target_train)
-elif mode == 'training':
-    x_train = np.genfromtxt('train.csv', delimiter=',')[:,slice(0,2)]
-    target_train = np.expand_dims(np.genfromtxt('train.csv', delimiter=',')[:,2], axis=1)
-    x_val = np.genfromtxt('val.csv', delimiter=',')[:,slice(0,2)]
-    target_val = np.expand_dims(np.genfromtxt('val.csv', delimiter=',')[:,2], axis=1)
-    train(x_train, target_train, x_val, target_val, epoch_count=20000, learning_rate=0.04)
+# elif mode == 'overfitting':
+#     x_train = np.array([[0.5, 0.5], [0.75, 0.75], [0.25, 0.25], [0.1, 0.1]])
+#     target_train = np.array([[0], [0], [1], [1]], dtype=int)
+#     train(x_train, target_train)
+# elif mode == 'training':
+#     x_train = np.genfromtxt(str(cwd_path) + r'\train.csv', delimiter=',')[:,slice(0,2)]
+#     target_train = np.expand_dims(np.genfromtxt(str(cwd_path) + r'\train.csv', delimiter=',')[:,2], axis=1)
+#     x_val = np.genfromtxt(str(cwd_path) + r'\val.csv', delimiter=',')[:,slice(0,2)]
+#     target_val = np.expand_dims(np.genfromtxt(str(cwd_path) + r'\val.csv', delimiter=',')[:,2], axis=1)
+#     train(x_train, target_train, x_val, target_val, epoch_count=20000, learning_rate=0.04)
