@@ -41,16 +41,21 @@ def test_grad(input_shape, forward, backward, X=None, output_grad=None):
 
 # ------------------------------ Layer functions ------------------------------
 def fully_connected_forward(W: np.ndarray, b: np.ndarray, X: np.ndarray):
-    # <Your code here>
     U = (W.dot(X.T)).T + b
-    # print(U)
     return U
 
 
-def fully_connected_backward(W, b, X, output_grad):
-    dW = np.dot(X.T, output_grad)
-    db = output_grad
-    dX = np.dot(W.T, output_grad.T)
+def fully_connected_backward(W, b, X, output_grad) -> (np.ndarray, np.ndarray, np.ndarray):
+    """
+    :param W: (n_out, n_in)
+    :param b: (n_out,)
+    :param X: (batch_size, n_in)
+    
+    return: dX, dW, db
+    """
+    dW = np.dot(output_grad.T, X)
+    db = np.sum(output_grad, axis=0)
+    dX = np.dot(output_grad, W)
     return dX, dW, db
 
 
@@ -71,15 +76,13 @@ def sigmoid_backward(X, output_grad):
 
 
 def bce_forward(X, target):
-    # return -target*np.log(X)-(1-target)*np.log(1-X)
     return np.mean(-target*np.log(X)-(1-target)*np.log(1-X))
 
 
 def bce_backward(X, target):
-    # print("bce inputs are:")
-    # print(X, target)
-    # Pas supposer diviser par len de X, pq ca fonctionne comme ca...
-    return ((-target/X)+(1-target)/(1-X))/len(X)
+    return ((-target/X)+(1-target)/(1-X))/X.shape[0] # Ici, shape[0] fait reference au nombre d'exemple dans la batch, en normalisant tout suite, 
+                                                        # on calcul une seule fois la division (scaling) et ceci sera propagé dans la backpropagation. 
+                                                        # Si on ne normalise pas, on devra faire la division pour chaque exemple dans la batch dans les layeurs précédent, ce qui est plus couteux sur la complexité
 
 
 # ------------------------------ Test functions ------------------------------
@@ -234,13 +237,33 @@ def train(x_train, target_train, x_val=None, target_val=None, epoch_count=100, l
         print('epoch={}'.format(epoch + 1))
         
         # Training: Forward pass
-        # <Your code here>
+        u = fully_connected_forward(W1, b1, x_train)
+        g = relu_forward(u)
+        v = fully_connected_forward(W2, b2, g)
+        h = relu_forward(v)
+        w = fully_connected_forward(W3, b3, h)
+        y = sigmoid_forward(w)
+        loss = bce_forward(y, target_train)
+        
         
         # Training: Backward pass
-        # <Your code here>
+        dy = bce_backward(y, target_train)
+        dw = sigmoid_backward(w, dy)
+        dh, dW3, db3 = fully_connected_backward(W3, b3, h, dw)
+        dv = relu_backward(v, dh)
+        dg, dW2, db2 = fully_connected_backward(W2, b2, g, dv)
+        du = relu_backward(u, dg)
+        dx, dW1, db1 = fully_connected_backward(W1, b1, x_train, du)
+        
+        
         
         # Training: Descent gradient
-        # <Your code here>   
+        W1 = W1 - learning_rate * dW1
+        b1 = b1 - learning_rate * db1
+        W2 = W2 - learning_rate * dW2
+        b2 = b2 - learning_rate * db2
+        W3 = W3 - learning_rate * dW3
+        b3 = b3 - learning_rate * db3
         
         # Training: Metrics
         losses_train.append(loss)        
@@ -254,8 +277,14 @@ def train(x_train, target_train, x_val=None, target_val=None, epoch_count=100, l
         if x_val is not None and target_val is not None:
 
             # Validation: Forward pass
-            # <Your code here>
             y = np.zeros_like(target_val)
+            u = fully_connected_forward(W1, b1, x_val)
+            g = relu_forward(u)
+            v = fully_connected_forward(W2, b2, g)
+            h = relu_forward(v)
+            w = fully_connected_forward(W3, b3, h)
+            y = sigmoid_forward(w)
+            loss = bce_forward(y, target_val)
             # Validation: Metrics
             losses_val.append(loss)        
             predicted_classes = (y > 0.5).astype(int)
@@ -304,8 +333,14 @@ def show_decision_boundary(W1, b1, W2, b2, W3, b3):
     
     data = np.array(np.meshgrid(x1, x2)).T.reshape(-1,2)
     
-    # <Your code here, same as forward pass in train>
     y = np.zeros(data.shape[0])
+    u = fully_connected_forward(W1, b1, data)
+    g = relu_forward(u)
+    v = fully_connected_forward(W2, b2, g)
+    h = relu_forward(v)
+    w = fully_connected_forward(W3, b3, h)
+    y = sigmoid_forward(w)
+    # loss = bce_forward(y, target_train)
     fig = plt.figure(figsize=(5, 5), dpi=200)
     ax = fig.add_subplot(111)
     ax.imshow(1 - y.reshape(x1.size, x2.size).T, cmap='bwr', extent=[-1, 1, -1, 1], vmin=0, vmax=1)
@@ -314,8 +349,13 @@ def show_decision_boundary(W1, b1, W2, b2, W3, b3):
 
 def show_classification(W1, b1, W2, b2, W3, b3, X, title=''):
 
-    # <Your code here, same as forward pass in train> 
-    y = 0
+    u = fully_connected_forward(W1, b1, X)
+    g = relu_forward(u)
+    v = fully_connected_forward(W2, b2, g)
+    h = relu_forward(v)
+    w = fully_connected_forward(W3, b3, h)
+    y = sigmoid_forward(w)
+    # loss = bce_forward(y, target_train)
     predicted_classes = (y > 0.5).astype(int)
 
     c1 = np.squeeze(predicted_classes==0)
@@ -329,16 +369,16 @@ def show_classification(W1, b1, W2, b2, W3, b3, X, title=''):
     fig.show()
 
 # ------------------------------------ main -----------------------------------
-mode = 'test'
+mode = 'training'
 if mode == 'test':
     test()
-# elif mode == 'overfitting':
-#     x_train = np.array([[0.5, 0.5], [0.75, 0.75], [0.25, 0.25], [0.1, 0.1]])
-#     target_train = np.array([[0], [0], [1], [1]], dtype=int)
-#     train(x_train, target_train)
-# elif mode == 'training':
-#     x_train = np.genfromtxt(str(cwd_path) + r'\train.csv', delimiter=',')[:,slice(0,2)]
-#     target_train = np.expand_dims(np.genfromtxt(str(cwd_path) + r'\train.csv', delimiter=',')[:,2], axis=1)
-#     x_val = np.genfromtxt(str(cwd_path) + r'\val.csv', delimiter=',')[:,slice(0,2)]
-#     target_val = np.expand_dims(np.genfromtxt(str(cwd_path) + r'\val.csv', delimiter=',')[:,2], axis=1)
-#     train(x_train, target_train, x_val, target_val, epoch_count=20000, learning_rate=0.04)
+elif mode == 'overfitting':
+    x_train = np.array([[0.5, 0.5], [0.75, 0.75], [0.25, 0.25], [0.1, 0.1]])
+    target_train = np.array([[0], [0], [1], [1]], dtype=int)
+    train(x_train, target_train)
+elif mode == 'training':
+    x_train = np.genfromtxt(str(cwd_path) + r'\train.csv', delimiter=',')[:,slice(0,2)]
+    target_train = np.expand_dims(np.genfromtxt(str(cwd_path) + r'\train.csv', delimiter=',')[:,2], axis=1)
+    x_val = np.genfromtxt(str(cwd_path) + r'\val.csv', delimiter=',')[:,slice(0,2)]
+    target_val = np.expand_dims(np.genfromtxt(str(cwd_path) + r'\val.csv', delimiter=',')[:,2], axis=1)
+    train(x_train, target_train, x_val, target_val, epoch_count=20000, learning_rate=0.04)
