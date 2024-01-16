@@ -45,11 +45,13 @@ def fully_connected_forward(W, b, X):
 
 def fully_connected_backward(W, b, X, output_grad):
 
-    dX = (W.T @ output_grad.T).T
+    dX = (output_grad @ W)
     
-    dW = (X.T @ output_grad).T
+    dW = (output_grad.T@X)
 
     ## Pourquoi somme de l'axe 0? voir équation 89 note de cours
+    #   Pour merger le résultat de tous les exemples données en entrés
+    #   On utilise pas la moyenne pour sauver en temps de calcul (on élimine la division)
     db =  np.sum(output_grad, 0)
     
     return dX, dW, db
@@ -77,6 +79,8 @@ def sigmoid_backward(X, output_grad):
 
 def bce_forward(x, target):
     # Pourquoi moyenne? voir équation 41 notes de cours
+    #   Pour scaler le graphique de la courbe d'apprentissage, on n'utilise pas la somme.
+    #   On fait la moyenne pour combiner le loss de tous les échantillons.  
     L = np.mean(-target * np.log(x) - (1-target)*np.log(1-x))
 
     return L
@@ -85,8 +89,9 @@ def bce_forward(x, target):
 def bce_backward(x, target):
     
     # Pourquoi /len(x) ? voir équation 43 notes de cours
+    #   Normalement on ferais la moyenne, mais dans ce cas si, on fait la division sur chaque élément
+    #   mais on va faire l'addition plus tard
     dL = (-(target/x) + ((1-target)/(1-x)))/len(x)
-    
 
     return dL
 
@@ -247,14 +252,33 @@ def train(x_train, target_train, x_val=None, target_val=None, epoch_count=100, l
         print('epoch={}'.format(epoch + 1))
         
         # Training: Forward pass
-        # <Your code here>
+        u = fully_connected_forward(W1, b1, x_train)
+        g = relu_forward(u)
+        v = fully_connected_forward(W2, b2, g)
+        h = relu_forward(v)
+        w = fully_connected_forward(W3, b3, h)
+        y = sigmoid_forward(w)
+        loss = bce_forward(y, target_train)
         
         # Training: Backward pass
-        # <Your code here>
+        d_y = bce_backward(y, target_train)
+        d_w = sigmoid_backward(w, d_y)
+        d_h, d_W3, d_b3 = fully_connected_backward(W3, b3, h, d_w)
+        d_v = relu_backward(v, d_h)
+        d_g, d_W2, d_b2 = fully_connected_backward(W2, b2, g, d_v)
+        d_u = relu_backward(u, d_g)
+        d_x, d_W1, d_b1 = fully_connected_backward(W1, b1, x_train, d_u)
         
         # Training: Descent gradient
-        # <Your code here>   
-        
+        W1 = W1 - learning_rate*d_W1
+        b1 = b1 - learning_rate*d_b1
+
+        W2 = W2 - learning_rate*d_W2
+        b2 = b2 - learning_rate*d_b2
+
+        W3 = W3 - learning_rate*d_W3
+        b3 = b3 - learning_rate*d_b3
+
         # Training: Metrics
         losses_train.append(loss)        
         predicted_classes = (y > 0.5).astype(int)
@@ -267,7 +291,13 @@ def train(x_train, target_train, x_val=None, target_val=None, epoch_count=100, l
         if x_val is not None and target_val is not None:
 
             # Validation: Forward pass
-            # <Your code here>
+            u = fully_connected_forward(W1, b1, x_val)
+            g = relu_forward(u)
+            v = fully_connected_forward(W2, b2, g)
+            h = relu_forward(v)
+            w = fully_connected_forward(W3, b3, h)
+            y = sigmoid_forward(w)
+            loss = bce_forward(y, target_val)
 
             # Validation: Metrics
             losses_val.append(loss)        
@@ -317,7 +347,13 @@ def show_decision_boundary(W1, b1, W2, b2, W3, b3):
     
     data = np.array(np.meshgrid(x1, x2)).T.reshape(-1,2)
     
-    # <Your code here, same as forward pass in train>
+    u = fully_connected_forward(W1, b1, data)
+    g = relu_forward(u)
+    v = fully_connected_forward(W2, b2, g)
+    h = relu_forward(v)
+    w = fully_connected_forward(W3, b3, h)
+    y = sigmoid_forward(w)
+    #loss = bce_forward(y, target_train)
     
     fig = plt.figure(figsize=(5, 5), dpi=200)
     ax = fig.add_subplot(111)
@@ -327,7 +363,13 @@ def show_decision_boundary(W1, b1, W2, b2, W3, b3):
 
 def show_classification(W1, b1, W2, b2, W3, b3, X, title=''):
 
-    # <Your code here, same as forward pass in train> 
+    u = fully_connected_forward(W1, b1, X)
+    g = relu_forward(u)
+    v = fully_connected_forward(W2, b2, g)
+    h = relu_forward(v)
+    w = fully_connected_forward(W3, b3, h)
+    y = sigmoid_forward(w)
+    # loss = bce_forward(y, target_train)
     
     predicted_classes = (y > 0.5).astype(int)
 
@@ -342,7 +384,7 @@ def show_classification(W1, b1, W2, b2, W3, b3, X, title=''):
     fig.show()
 
 # ------------------------------------ main -----------------------------------
-mode = 'test'
+mode = 'training'
 if mode == 'test':
     test()
 elif mode == 'overfitting':
