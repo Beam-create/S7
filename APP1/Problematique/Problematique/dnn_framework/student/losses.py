@@ -24,6 +24,8 @@ class CrossEntropyLoss(Loss):
         L = -np.sum(target*np.log(x.T))
         dL = -target/x.T
 
+        # L et dL fonctionne pas
+
         return (L , dL)
 
 
@@ -48,5 +50,7 @@ class MeanSquaredErrorLoss(Loss):
         """
         L = np.mean((x - target)**2)
         dL = 2*(x - target)
+
+        # dL fonctionne pas
 
         return (L, dL)
