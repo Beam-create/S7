@@ -7,6 +7,7 @@ class SgdOptimizer(Optimizer):
     """
 
     def __init__(self, parameters, learning_rate=0.01):
+        # Initialiser les params
         raise NotImplementedError()
 
     def _step_parameter(self, parameter, parameter_grad, parameter_name):

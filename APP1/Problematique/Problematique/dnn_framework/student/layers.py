@@ -21,7 +21,7 @@ class FullyConnectedLayer(Layer):
         return self.params
 
     def get_buffers(self):
-        raise NotImplementedError()
+        return {}
 
     def forward(self, x):
         Y = (self.W @ x.T).T + self.b
@@ -43,6 +43,7 @@ class BatchNormalization(Layer):
     """
 
     def __init__(self, input_count, alpha=0.1):
+        super.__init__()
         self.gamma = np.ones((input_count))
         self.beta = np.zeros((input_count))
         self.alpha = alpha
@@ -61,6 +62,8 @@ class BatchNormalization(Layer):
         return self.buffer
 
     def forward(self, x):
+        # Regarder dans quel mode il est, et appeler la bonne
+        # fonction selon le mode
         avg =np.mean(x, 0)
         dev = np.std(x, 0)
 
@@ -79,9 +82,12 @@ class BatchNormalization(Layer):
         return (y, x_est)
 
     def _forward_training(self, x):
+        # Recalcule la moyenne globale et la variance
         return self.forward(x)
 
     def _forward_evaluation(self, x):
+        # Ne calcule pas la moyenne globale et la variance. 
+        # ce sont des param fixe
         return self.forward(x)
 
     def backward(self, output_grad, cache):
@@ -103,7 +109,7 @@ class Sigmoid(Layer):
         return params
 
     def get_buffers(self):
-        raise NotImplementedError()
+        return {}
 
     def forward(self, x):
         y = 1/( 1 + np.exp(-x))
@@ -123,7 +129,7 @@ class ReLU(Layer):
         return params
 
     def get_buffers(self):
-        raise NotImplementedError()
+        return {}
 
     def forward(self, x):
         return (np.maximum(0,x), x)
