@@ -9,19 +9,32 @@ class FullyConnectedLayer(Layer):
     """
 
     def __init__(self, input_count, output_count):
-        raise NotImplementedError()
+        self.I = input_count
+        self.J = output_count
+
+        self.W = np.random.randn(self.J, self.I)
+        self.b = np.random.randn(1,self.J)
+
+        self.params = {"w" : self.W, "b" : self.b}
 
     def get_parameters(self):
-        raise NotImplementedError()
+        return self.params
 
     def get_buffers(self):
-        raise NotImplementedError()
+        return {}
 
     def forward(self, x):
-        raise NotImplementedError()
+        Y = (self.W @ x.T).T + self.b
+        return (Y, x)
 
     def backward(self, output_grad, cache):
-        raise NotImplementedError()
+        dX = (output_grad @ self.W)
+        dW = (output_grad.T@cache)
+        db =  np.sum(output_grad, 0)
+
+        grad = {"w" : dW , "b" : db}
+
+        return (dX, grad)
 
 
 class BatchNormalization(Layer):
@@ -30,26 +43,74 @@ class BatchNormalization(Layer):
     """
 
     def __init__(self, input_count, alpha=0.1):
-        raise NotImplementedError()
+        super().__init__()
+        self.gamma = np.ones((input_count))
+        self.beta = np.zeros((input_count))
+        self.alpha = alpha
+
+        self.global_mean = np.empty((input_count))
+        self.global_variance = np.empty((input_count))
+
+        self.params = {'gamma' : self.gamma, 'beta' : self.beta}
+        self.buffer = {'global_mean' : self.global_mean, 
+                       'global_variance' : self.global_variance}
 
     def get_parameters(self):
-        raise NotImplementedError()
+        return self.params
 
     def get_buffers(self):
-        raise NotImplementedError()
+        return self.buffer
 
     def forward(self, x):
-        raise NotImplementedError()
 
+        if self._is_training :
+            return self._forward_training(x)
+        
+        else :
+            return self._forward_evaluation(x)
+        
     def _forward_training(self, x):
-        raise NotImplementedError()
+        
+        mean_B = np.mean(x, 0)
+        var_B = np.var(x, 0)
+
+        self.global_mean = (1-self.alpha)*self.global_mean + self.alpha*mean_B
+        self.global_variance = (1-self.alpha)*self.global_variance + self.alpha*var_B
+        
+        e = 10e-10
+        x_est = (x - mean_B)/np.sqrt(var_B + e)
+
+        y = (self.gamma*x_est + self.beta)
+        return (y, (x, x_est, mean_B, var_B))
 
     def _forward_evaluation(self, x):
-        raise NotImplementedError()
+
+        avg = self.global_mean
+        var = self.global_variance
+
+        e = 10e-10
+        x_est = (x - avg)/np.sqrt(var  + e)
+
+        y = (self.gamma*x_est + self.beta)
+        return (y, (x, x_est, avg, var))
 
     def backward(self, output_grad, cache):
-        raise NotImplementedError()
+        # Extraire la cache
+        x, x_est, mean, var = cache
+        N, M = x.shape
+        e = 10e-10
 
+        # Calcul des grad
+        dx_est = output_grad * self.gamma
+        dvar = np.sum(dx_est*(x-mean)*(-1/2)*(var+e)**(-3/2), 0)
+        dmean = -np.sum(dx_est, 0)/np.sqrt(var+e)
+        dx = dx_est/np.sqrt(var+e) + (2/N) * dvar * (x-mean) + (1/N)*dmean
+        dgamma = np.sum(output_grad*x_est, 0)
+        dbeta = np.sum(output_grad, 0)
+
+        grads = {'gamma' : dgamma, 'beta' : dbeta}
+
+        return (dx, grads)
 
 class Sigmoid(Layer):
     """
@@ -57,16 +118,18 @@ class Sigmoid(Layer):
     """
 
     def get_parameters(self):
-        raise NotImplementedError()
+        params = {}
+        return params
 
     def get_buffers(self):
-        raise NotImplementedError()
+        return {}
 
     def forward(self, x):
-        raise NotImplementedError()
+        y = 1/( 1 + np.exp(-x))
+        return (y, y)
 
     def backward(self, output_grad, cache):
-        raise NotImplementedError()
+        return ((1-cache)*cache * output_grad, {})
 
 
 class ReLU(Layer):
@@ -75,13 +138,14 @@ class ReLU(Layer):
     """
 
     def get_parameters(self):
-        raise NotImplementedError()
+        params = {}
+        return params
 
     def get_buffers(self):
-        raise NotImplementedError()
+        return {}
 
     def forward(self, x):
-        raise NotImplementedError()
+        return (np.maximum(0,x), x)
 
     def backward(self, output_grad, cache):
-        raise NotImplementedError()
+        return ((cache>0)*output_grad, {})

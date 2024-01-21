@@ -2,6 +2,10 @@ import unittest
 
 import numpy as np
 
+import sys
+sys.path.append('C:\\Users\\Mathieu\\Documents\\UNIVERSITÉ\\COURS\\S7\\github\\S7\\APP1\\Problematique\\Problematique')
+
+
 from dnn_framework import SgdOptimizer
 from tests import DELTA
 
