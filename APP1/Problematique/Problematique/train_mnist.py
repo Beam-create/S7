@@ -6,6 +6,7 @@ from mnist import MnistTrainer
 
 def main():
     parser = argparse.ArgumentParser(description='Train Backbone')
+
     parser.add_argument('--learning_rate', type=float, help='Choose the learning rate', required=True)
     parser.add_argument('--batch_size', type=int, help='Set the batch size for the training', required=True)
     parser.add_argument('--epoch_count', type=int, help='Choose the epoch count', required=True)
@@ -21,7 +22,13 @@ def main():
 
 
 def create_network(checkpoint_path):
-    layers = []
+    layers = [FullyConnectedLayer(784, 128), 
+              BatchNormalization(128, 0.1),
+              ReLU(),
+              FullyConnectedLayer(128, 32),
+              BatchNormalization(32, 0.1),
+              ReLU(),
+              FullyConnectedLayer(32, 10),]
     network = Network(layers)
     if checkpoint_path is not None:
         network.load(checkpoint_path)

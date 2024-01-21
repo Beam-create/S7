@@ -21,15 +21,23 @@ class CrossEntropyLoss(Loss):
         """
         # N est le nombre de lot
         # C est le nombre de classe (10 dans le cas de la prob)
-        # Utiliser le softmax
-        # Au pire aller voir pytorch
+
+        N, C = x.shape
+
+        # softmax forward
         x2, D = softmax(x)
-        real_target = np.eye(x.shape[1])[target]
-        L = -np.sum(real_target*np.log(x2))/x.shape[0]
         
-        dy = (-real_target/x)/x.shape[0]
-        dx = np.mean(D@dy.T, 0).T
-        # L et dL fonctionne pas
+        # CE forward
+        real_target = np.eye(C)[target]
+        L = -np.sum(real_target*np.log(x2))/N
+        
+        # CE backward
+        dx2 = -real_target/x2
+
+        # softmax backward
+        dx = np.zeros_like(x)
+        for n in range(N):
+            dx[n, :] = np.dot(D[n, :], dx2[n, :])/N
 
         return (L , dx)
 
@@ -44,9 +52,12 @@ def softmax(x):
     y = np.zeros_like(x)
     D = np.zeros((N, C, C))
     for n in range(N):
+        # forward
         y[n] = np.exp(x[n]) / np.sum(np.exp(x[n]))
+        
+        # D for backward
         D1 = y[n]*(1-y[n]) * np.eye(C)
-        D2 = -y[n]*y[n].T * np.ones((C,C))
+        D2 = -np.outer(y[n], y[n])
         D2[np.diag_indices_from(D2)] = np.diag(D1)
         D[n] = D2
 
