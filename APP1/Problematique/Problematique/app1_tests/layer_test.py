@@ -1,12 +1,11 @@
 import unittest
 
 import sys
-sys.path.append('C:\\Users\\Mathieu\\Documents\\UNIVERSITÉ\\COURS\\S7\\github\\S7\\APP1\\Problematique\\Problematique')
-
+sys.path.append('C:\\Users\\Christopher\\Desktop\\Workspace_temp\\S7\\APP1\\Problematique\\Problematique')
 import numpy as np
 
 from dnn_framework import FullyConnectedLayer, BatchNormalization, Sigmoid, ReLU
-from tests import test_layer_input_grad, test_layer_parameter_grad, DELTA
+from app1_tests import test_layer_input_grad, test_layer_parameter_grad, DELTA
 
 
 class LayerTestCase(unittest.TestCase):

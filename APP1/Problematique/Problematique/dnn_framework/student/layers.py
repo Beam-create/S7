@@ -12,10 +12,13 @@ class FullyConnectedLayer(Layer):
         self.I = input_count
         self.J = output_count
 
+        # We want reproducible results
+        manual_seed = 42
+        np.random.seed(manual_seed)
         self.W = np.random.randn(self.J, self.I)
         self.b = np.random.randn(1,self.J)
-
         self.params = {"w" : self.W, "b" : self.b}
+        
 
     def get_parameters(self):
         return self.params
@@ -47,6 +50,7 @@ class BatchNormalization(Layer):
         self.gamma = np.ones((input_count))
         self.beta = np.zeros((input_count))
         self.alpha = alpha
+        self.eps = 10e-10
 
         self.global_mean = np.empty((input_count))
         self.global_variance = np.empty((input_count))
@@ -77,8 +81,7 @@ class BatchNormalization(Layer):
         self.global_mean = (1-self.alpha)*self.global_mean + self.alpha*mean_B
         self.global_variance = (1-self.alpha)*self.global_variance + self.alpha*var_B
         
-        e = 10e-10
-        x_est = (x - mean_B)/np.sqrt(var_B + e)
+        x_est = (x - mean_B)/np.sqrt(var_B + self.eps)
 
         y = (self.gamma*x_est + self.beta)
         return (y, (x, x_est, mean_B, var_B))
@@ -88,8 +91,7 @@ class BatchNormalization(Layer):
         avg = self.global_mean
         var = self.global_variance
 
-        e = 10e-10
-        x_est = (x - avg)/np.sqrt(var  + e)
+        x_est = (x - avg)/np.sqrt(var  + self.eps)
 
         y = (self.gamma*x_est + self.beta)
         return (y, (x, x_est, avg, var))
@@ -98,13 +100,12 @@ class BatchNormalization(Layer):
         # Extraire la cache
         x, x_est, mean, var = cache
         N, M = x.shape
-        e = 10e-10
 
         # Calcul des grad
         dx_est = output_grad * self.gamma
-        dvar = np.sum(dx_est*(x-mean)*(-1/2)*(var+e)**(-3/2), 0)
-        dmean = -np.sum(dx_est, 0)/np.sqrt(var+e)
-        dx = dx_est/np.sqrt(var+e) + (2/N) * dvar * (x-mean) + (1/N)*dmean
+        dvar = np.sum(dx_est*(x-mean)*(-1/2)*(var+self.eps)**(-3/2), 0)
+        dmean = -np.sum(dx_est, 0)/np.sqrt(var+self.eps)
+        dx = dx_est/np.sqrt(var+self.eps) + (2/N) * dvar * (x-mean) + (1/N)*dmean
         dgamma = np.sum(output_grad*x_est, 0)
         dbeta = np.sum(output_grad, 0)
 
