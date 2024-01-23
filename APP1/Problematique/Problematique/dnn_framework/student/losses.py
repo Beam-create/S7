@@ -23,23 +23,15 @@ class CrossEntropyLoss(Loss):
         # C est le nombre de classe (10 dans le cas de la prob)
 
         N, C = x.shape
-
-        # softmax forward
-        x2, D = softmax(x)
         
         # CE forward
         real_target = np.eye(C)[target]
-        L = -np.sum(real_target*np.log(x2))/N
-        
-        # CE backward
-        dx2 = -real_target/x2
+        # softmax forward
+        x2 = softmax(x)
+        dL_dy = (x2 - real_target)/N
+        L = -np.sum(real_target*np.log(x2 + 1e-12))/N
 
-        # softmax backward
-        dx = np.zeros_like(x)
-        for n in range(N):
-            dx[n, :] = np.dot(D[n, :], dx2[n, :])/N
-
-        return (L , dx)
+        return (L , dL_dy)
 
 
 def softmax(x):
@@ -50,18 +42,9 @@ def softmax(x):
 
     N, C = x.shape
     y = np.zeros_like(x)
-    D = np.zeros((N, C, C))
-    for n in range(N):
-        # forward
-        y[n] = np.exp(x[n]) / np.sum(np.exp(x[n]))
-        
-        # D for backward
-        D1 = y[n]*(1-y[n]) * np.eye(C)
-        D2 = -np.outer(y[n], y[n])
-        D2[np.diag_indices_from(D2)] = np.diag(D1)
-        D[n] = D2
+    y = np.exp(x) / np.sum(np.exp(x), axis=1, keepdims=True)
 
-    return (y, D)
+    return y
 
 
 class MeanSquaredErrorLoss(Loss):

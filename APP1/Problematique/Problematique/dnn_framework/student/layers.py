@@ -15,8 +15,8 @@ class FullyConnectedLayer(Layer):
         # We want reproducible results
         manual_seed = 42
         np.random.seed(manual_seed)
-        self.W = np.random.randn(self.J, self.I)
-        self.b = np.random.randn(1,self.J)
+        self.W = np.random.randn(self.J, self.I) * (2/(self.I + self.J))
+        self.b = np.random.randn(1, self.J) * (2/self.J)
         self.params = {"w" : self.W, "b" : self.b}
         
 
@@ -50,7 +50,7 @@ class BatchNormalization(Layer):
         self.gamma = np.ones((input_count))
         self.beta = np.zeros((input_count))
         self.alpha = alpha
-        self.eps = 10e-10
+        self.eps = 1e-10
 
         self.global_mean = np.empty((input_count))
         self.global_variance = np.empty((input_count))
