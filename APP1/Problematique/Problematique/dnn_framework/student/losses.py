@@ -1,10 +1,5 @@
 import numpy as np
 
-import sys
-sys.path.append('C:\\Users\\Mathieu\\Documents\\UNIVERSITÉ\\COURS\\S7\\github\\S7\\APP1\\Problematique\\Problematique')
-sys.path.append('C:\\Users\\fulld\\Documents\\UNIVERSITÉ\\COURS\\S7\\github\\S7\\APP1\\Problematique\\Problematique')
-
-
 from dnn_framework.loss import Loss
 
 
@@ -23,14 +18,21 @@ class CrossEntropyLoss(Loss):
         # C est le nombre de classe (10 dans le cas de la prob)
 
         N, C = x.shape
+
+        # softmax forward
+        x2, D = softmax(x)
         
         # CE forward
         real_target = np.eye(C)[target]
-        # softmax forward
-        x2 = softmax(x)
-        dL_dy = (x2 - real_target)/N
-        L = -np.sum(real_target*np.log(x2 + 1e-12))/N
+        L = -np.sum(real_target*np.log(x2))/N
+        
+        # CE backward
+        dCE_dx = -real_target/x2
 
+        # Backwards of Loss with respect to input prediction
+        dL_dy = np.zeros_like(x)
+        for n in range(N):
+            dL_dy[n, :] = np.dot(D[n, :], dCE_dx[n, :])/N
         return (L , dL_dy)
 
 
@@ -42,9 +44,18 @@ def softmax(x):
 
     N, C = x.shape
     y = np.zeros_like(x)
-    y = np.exp(x) / np.sum(np.exp(x), axis=1, keepdims=True)
+    dSM_dx = np.zeros((N, C, C))
+    for n in range(N):
+        # forward
+        y[n] = np.exp(x[n]) / np.sum(np.exp(x[n]))
+        
+        # D for backward
+        D1 = y[n]*(1-y[n]) * np.eye(C)
+        D2 = -np.outer(y[n], y[n])
+        D2[np.diag_indices_from(D2)] = np.diag(D1)
+        dSM_dx[n] = D2
 
-    return y
+    return (y, dSM_dx)
 
 
 class MeanSquaredErrorLoss(Loss):
