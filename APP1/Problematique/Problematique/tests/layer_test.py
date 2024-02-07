@@ -1,6 +1,6 @@
 import unittest
-import sys
 
+import sys
 sys.path.append('C:\\Users\\Mathieu\\Documents\\UNIVERSITÉ\\COURS\\S7\\github\\S7\\APP1\\Problematique\\Problematique')
 
 import numpy as np

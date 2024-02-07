@@ -12,8 +12,8 @@ class FullyConnectedLayer(Layer):
         self.I = input_count
         self.J = output_count
 
-        self.W = np.ones((self.J, self.I))
-        self.b = np.ones((1,self.J))
+        self.W = np.random.randn(self.J, self.I)
+        self.b = np.random.randn(1,self.J)
 
         self.params = {"w" : self.W, "b" : self.b}
 
@@ -43,13 +43,13 @@ class BatchNormalization(Layer):
     """
 
     def __init__(self, input_count, alpha=0.1):
-        super.__init__()
+        super().__init__()
         self.gamma = np.ones((input_count))
         self.beta = np.zeros((input_count))
         self.alpha = alpha
 
-        self.global_mean = 0
-        self.global_variance = 0
+        self.global_mean = np.empty((input_count))
+        self.global_variance = np.empty((input_count))
 
         self.params = {'gamma' : self.gamma, 'beta' : self.beta}
         self.buffer = {'global_mean' : self.global_mean, 
@@ -62,38 +62,51 @@ class BatchNormalization(Layer):
         return self.buffer
 
     def forward(self, x):
-        # Regarder dans quel mode il est, et appeler la bonne
-        # fonction selon le mode
-        avg =np.mean(x, 0)
-        dev = np.std(x, 0)
 
-        self.global_mean = (1-self.alpha)*self.global_mean + self.alpha*avg
-        self.global_variance = (1-self.alpha)*self.global_variance + self.alpha*dev
+        if self._is_training :
+            return self._forward_training(x)
         
-        avg = self.global_mean
-        dev = self.global_variance
-        if dev.any == 0:
-            dev = 10e-6
-        x_est = (x - avg)/np.sqrt(dev**2)
-
-        y = (self.gamma.T@x_est.T + self.beta).T
-
-
-        return (y, x_est)
-
+        else :
+            return self._forward_evaluation(x)
+        
     def _forward_training(self, x):
-        # Recalcule la moyenne globale et la variance
-        return self.forward(x)
+        
+        mean_B = np.mean(x, 0)
+        var_B = np.var(x, 0)
+
+        self.global_mean = (1-self.alpha)*self.global_mean + self.alpha*mean_B
+        self.global_variance = (1-self.alpha)*self.global_variance + self.alpha*var_B
+        
+        e = 10e-10
+        x_est = (x - mean_B)/np.sqrt(var_B + e)
+
+        y = (self.gamma*x_est + self.beta)
+        return (y, (x, x_est, mean_B, var_B))
 
     def _forward_evaluation(self, x):
-        # Ne calcule pas la moyenne globale et la variance. 
-        # ce sont des param fixe
-        return self.forward(x)
+
+        avg = self.global_mean
+        var = self.global_variance
+
+        e = 10e-10
+        x_est = (x - avg)/np.sqrt(var  + e)
+
+        y = (self.gamma*x_est + self.beta)
+        return (y, (x, x_est, avg, var))
 
     def backward(self, output_grad, cache):
-        dx = output_grad@self.gamma
-        dgamma = np.sum(output_grad@cache.T)
-        dbeta = np.sum(output_grad)
+        # Extraire la cache
+        x, x_est, mean, var = cache
+        N, M = x.shape
+        e = 10e-10
+
+        # Calcul des grad
+        dx_est = output_grad * self.gamma
+        dvar = np.sum(dx_est*(x-mean)*(-1/2)*(var+e)**(-3/2), 0)
+        dmean = -np.sum(dx_est, 0)/np.sqrt(var+e)
+        dx = dx_est/np.sqrt(var+e) + (2/N) * dvar * (x-mean) + (1/N)*dmean
+        dgamma = np.sum(output_grad*x_est, 0)
+        dbeta = np.sum(output_grad, 0)
 
         grads = {'gamma' : dgamma, 'beta' : dbeta}
 
@@ -116,7 +129,7 @@ class Sigmoid(Layer):
         return (y, y)
 
     def backward(self, output_grad, cache):
-        return ((1-cache)*cache * output_grad, None)
+        return ((1-cache)*cache * output_grad, {})
 
 
 class ReLU(Layer):
@@ -135,4 +148,4 @@ class ReLU(Layer):
         return (np.maximum(0,x), x)
 
     def backward(self, output_grad, cache):
-        return ((cache>0)*output_grad, cache)
+        return ((cache>0)*output_grad, {})
