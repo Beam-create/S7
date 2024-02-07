@@ -13,7 +13,7 @@ class FullyConnectedLayer(Layer):
         self.J = output_count
 
         # We want reproducible results
-        manual_seed = 42
+        manual_seed = 3224
         np.random.seed(manual_seed)
         self.W = np.random.randn(self.J, self.I) * (2/(self.I + self.J))
         self.b = np.random.randn(1, self.J) * (2/self.J)
