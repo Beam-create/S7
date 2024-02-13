@@ -9,8 +9,26 @@ class LocalizationLoss(nn.Module):
 
     def forward(self, output, target):
         # ------------------------ Laboratoire 2 - Question 4 - Début de la section à compléter ------------------------
-        # À compléter
-        return torch.tensor(0.0)
+
+        width = target[:,2]-target[:,0]
+        height = target[:,3]-target[:,1]
+        xcenter = target[:,0] + width/2
+        ycenter = target[:, 1] + height/2
+
+        mseTarget = torch.stack([xcenter, ycenter, width, height], dim=1)
+
+        mse = nn.MSELoss()
+        mseLoss = mse(output[:,0:4], mseTarget)
+        #print("mseLoss", mseLoss)
+
+        ce = nn.CrossEntropyLoss()
+        ceLoss = ce(output[:,4:],target[:,-1].long())
+        #print("ceLoss", ceLoss)
+
+        totalLoss = self._alpha*ceLoss + mseLoss
+        #print("totalLoss", totalLoss)
+
+        return totalLoss
         # ------------------------ Laboratoire 2 - Question 4 - Fin de la section à compléter --------------------------
 
 
