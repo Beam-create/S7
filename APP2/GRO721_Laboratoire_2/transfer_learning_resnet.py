@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torchvision.models
 
 # Module du dataset
 from voc_classification_dataset import VOCClassificationDataset
@@ -23,7 +24,7 @@ input_channels = 3  # Nombre de canaux d'entree
 num_classes = 21  # Nombre de classes
 batch_size = 32  # Taille des lots pour l'entraînement
 val_test_batch_size = 32  # Taille des lots pour validation et test
-epochs = 10  # Nombre d'itérations (epochs)
+epochs = 2  # Nombre d'itérations (epochs)
 train_val_split = 0.8  # Proportion d'échantillons
 lr = 0.0001  # Taux d'apprentissage
 random_seed = 1  # Pour la répétabilité
@@ -54,7 +55,7 @@ if __name__ == '__main__':
                   'shuffle': True,
                   'num_workers': num_workers}
 
-    dataset_trainval = VOCClassificationDataset(data_path, image_set='train', download=True, img_shape=input_size)
+    dataset_trainval = VOCClassificationDataset(data_path, image_set='train', download=False, img_shape=input_size)
 
     # Séparation du dataset (entraînement et validation)
     dataset_train, dataset_val = torch.utils.data.random_split(dataset_trainval,
@@ -73,6 +74,19 @@ if __name__ == '__main__':
 
     # ------------------------ Laboratoire 2 - Question 2 - Début de la section à compléter ----------------------------
     # Chargement du modèle
+
+    #model = torch.load(weights_path, weights_only=False)
+
+    weights = torchvision.models.ResNet18_Weights.IMAGENET1K_V1
+    resnet = torchvision.models.resnet18(weights=weights, progress=True, )
+    for param in resnet.parameters():
+        param.requires_grad = False
+    for param in resnet.fc.parameters():
+        param.requires_grad = True
+    relu = torch.nn.ReLU()
+    linear = torch.nn.Linear(1000, num_classes)
+    sig = torch.nn.Sigmoid()
+    model = torch.nn.Sequential(resnet, relu, linear, sig)
 
     # ------------------------ Laboratoire 2 - Question 2 - Fin de la section à compléter ------------------------------
 
