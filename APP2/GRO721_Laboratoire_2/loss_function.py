@@ -22,7 +22,7 @@ class LocalizationLoss(nn.Module):
         #print("mseLoss", mseLoss)
 
         ce = nn.CrossEntropyLoss()
-        ceLoss = ce(output[:,4:],target[:,-1].long())
+        ceLoss = ce(output[:,4:], target[:,-1].long())
         #print("ceLoss", ceLoss)
 
         totalLoss = self._alpha*ceLoss + mseLoss
