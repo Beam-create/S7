@@ -12,7 +12,7 @@ from metrics import AccuracyMetric, MeanAveragePrecisionMetric, SegmentationInte
 from visualizer import Visualizer
 
 from models.classification_network import ResNet
-from models.segmentation_network import Unet
+from models.segmentation_network import Unet, SegmentationLoss
 
 TRAIN_VALIDATION_SPLIT = 0.9
 CLASS_PROBABILITY_THRESHOLD = 0.5
@@ -64,7 +64,7 @@ class ConveyorCnnTrainer():
             # À compléter
             raise NotImplementedError()
         elif task == 'segmentation':
-            return torch.nn.CrossEntropyLoss()
+            return SegmentationLoss()
         else:
             raise ValueError('Not supported task')
 
@@ -257,11 +257,10 @@ class ConveyorCnnTrainer():
             optimizer.step()
         elif task == "segmentation":
             output = model(image)
-            segmentation_target_copy = torch.nn.functional.one_hot(segmentation_target, num_classes=4).permute(0,3,1,2).float()
-            metric.accumulate(output, segmentation_target)
-            loss = criterion(output, segmentation_target_copy)
+            loss = criterion(output, segmentation_target)
             loss.backward()
             optimizer.step()
+            metric.accumulate(output, segmentation_target)
         return loss
 
     def _test_batch(self, task, model, criterion, metric, image, segmentation_target, boxes, class_labels):
@@ -308,9 +307,8 @@ class ConveyorCnnTrainer():
             loss = criterion(output, class_labels)
         elif task == "segmentation":
             output = model(image)
-            segmentation_target_copy = torch.nn.functional.one_hot(segmentation_target, num_classes=4).permute(0,3,1,2).float()
+            loss = criterion(output, segmentation_target)
             metric.accumulate(output, segmentation_target)
-            loss = criterion(output, segmentation_target_copy)
         return loss
 
 
