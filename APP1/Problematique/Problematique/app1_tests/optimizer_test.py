@@ -3,11 +3,11 @@ import unittest
 import numpy as np
 
 import sys
-sys.path.append('C:\\Users\\Mathieu\\Documents\\UNIVERSITÉ\\COURS\\S7\\github\\S7\\APP1\\Problematique\\Problematique')
+sys.path.append('C:\\Users\\Christopher\\Desktop\\Workspace_temp\\S7\\APP1\\Problematique\\Problematique')
 
 
 from dnn_framework import SgdOptimizer
-from tests import DELTA
+from app1_tests import DELTA
 
 
 class SgdOptimizerTestCase(unittest.TestCase):

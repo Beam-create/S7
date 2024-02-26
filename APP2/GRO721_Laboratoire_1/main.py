@@ -3,8 +3,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import torch.nn as nn
-import torchvision.datasets
+import torchvision
 from torchvision import transforms
 
 # Inclure le modèle
@@ -54,9 +53,8 @@ if __name__ == '__main__':
     transform = transforms.Compose([transforms.ToTensor(),
                                     transforms.Normalize((0.1307,), (0.3081,))])
 
-
-    dataset = torchvision.datasets.MNIST(data_path,train=True, download=False, transform=transform)
-    dataset_test = torchvision.datasets.MNIST(data_path,train=False, download=False, transform=transform)
+    dataset = torchvision.datasets.MNIST(root=data_path, train=True, download=True, transform=transform)
+    dataset_test = torchvision.datasets.MNIST(root=data_path, train=False, download=True, transform=transform)
 
     # Séparation du dataset (entraînement et validation)
     n_train_samples = int(len(dataset) * train_val_split)
@@ -75,20 +73,19 @@ if __name__ == '__main__':
 
     # ------------------------ Laboratoire 1 - Question 2 - Début de la section à compléter ----------------------------
     # Creation des dataloaders
-    train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=batch_size, num_workers=num_workers)
-    val_loader = torch.utils.data.DataLoader(dataset_val, batch_size=batch_size, num_workers=num_workers)
-    test_loader = torch.utils.data.DataLoader(dataset_test, batch_size=batch_size, num_workers=num_workers)
-
-    img, label = next(iter(train_loader))
-    print('image tensor shape', img.shape)
-    print('label tensor shape', label.shape)
+    train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=batch_size, shuffle=True,
+                                                   num_workers=num_workers)
+    val_loader = torch.utils.data.DataLoader(dataset_val, batch_size=batch_size, shuffle=False,
+                                                 num_workers=num_workers)
+    test_loader = torch.utils.data.DataLoader(dataset_test, batch_size=batch_size, shuffle=False,
+                                                  num_workers=num_workers)
     # ---------------------- Laboratoire 1 - Question 2 - Fin de la section à compléter --------------------------------
 
 
     # ---------------------- Laboratoire 1 - Question 3 - Début de la section à compléter ------------------
     # Création de l'optimisateur et de la fonction de coût
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    loss_criterion = nn.CrossEntropyLoss()
+    loss_criterion = torch.nn.CrossEntropyLoss()
     # ---------------------- Laboratoire 1 - Question 3 - Fin de la section à compléter --------------------
 
 
@@ -106,17 +103,13 @@ if __name__ == '__main__':
             for batch_idx, (data, target) in enumerate(train_loader):
                 data, target = data.to(device), target.to(device)
 
-
-
                 # ---------------------- Laboratoire 1 - Question 3 - Début de la section à compléter ------------------
-                # zero the parameter gradients
                 optimizer.zero_grad()
-
-                # forward + backward + optimize
-                outputs = model(data)
-                loss = loss_criterion(outputs, target)
+                y_pred = model(data)
+                loss = loss_criterion(y_pred, target)
                 loss.backward()
                 optimizer.step()
+
                 running_loss += loss.item()
                 # ---------------------- Laboratoire 1 - Question 3 - Fin de la section à compléter --------------------
 
@@ -134,22 +127,20 @@ if __name__ == '__main__':
             # Validation
             model.eval()
             val_loss = 0
-            accuracy = 0
             total = 0
-            correct = 0
+            correct_pred = 0
+            accuracy = 0
             with torch.no_grad():
                 for data, target in val_loader:
                     data, target = data.to(device), target.to(device)
 
-                    # ---------------------- Laboratoire 1 - Question 4 - Début de la section à compléter --------------
-                    # forward + backward + optimize
-                    outputs = model(data)
-                    loss = loss_criterion(outputs, target)
-                    val_loss += loss.item()
-                    _, predicted = torch.max(outputs.data, 1)
+                # ---------------------- Laboratoire 1 - Question 4 - Début de la section à compléter --------------
+                    y_val_pred = model(data)
+                    val_loss += loss_criterion(y_val_pred, target).item()
+                    _, predicted = torch.max(y_val_pred.data, 1)
                     total += target.size(0)
-                    correct += (predicted == target).sum().item()
-                    accuracy = correct / total
+                    correct_pred += (predicted == target).sum().item()
+                    accuracy = correct_pred / total
                 # ---------------------- Laboratoire 1 - Question 4 - Fin de la section à compléter --------------------
 
 
@@ -194,10 +185,8 @@ if __name__ == '__main__':
 
 
                 # ---------------------- Laboratoire 1 - Question 4 - Début de la section à compléter ------------------
-                # forward + backward + optimize
                 output = model(data)
-                loss = loss_criterion(output, target)
-                test_loss += loss.item()
+                test_loss += loss_criterion(output, target).item()
                 _, predicted = torch.max(output.data, 1)
                 total += target.size(0)
                 correct += (predicted == target).sum().item()

@@ -1,0 +1,11 @@
+# pytest and pycache
+.pytest_cache/
+__pycache__/
+*.pyc
+
+.vscode/
+
+venv/
+
+#ignore output_folder/
+output_folder/

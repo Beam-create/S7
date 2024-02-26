@@ -9,24 +9,28 @@ class LocalizationLoss(nn.Module):
 
     def forward(self, output, target):
         # ------------------------ Laboratoire 2 - Question 4 - Début de la section à compléter ------------------------
+        # À compléter
+        center_o = [output[:,0], output[:,1]]
+        w_o = output[:,2]
+        h_o = output[:,3]
 
-        width = target[:,2]-target[:,0]
-        height = target[:,3]-target[:,1]
-        xcenter = target[:,0] + width/2
-        ycenter = target[:, 1] + height/2
+        w_t = torch.abs(target[:,2]-target[:,0])
+        h_t = torch.abs(target[:,3]-target[:,1])
+        xcenter_t = target[:,0] + w_t/2
+        ycenter_t = target[:,1] + h_t/2
 
-        mseTarget = torch.stack([xcenter, ycenter, width, height], dim=1)
+        # Regression on bounding boxes
+        mseTarget = torch.stack([xcenter_t, ycenter_t, w_t, h_t], dim=1)
+        MSE = nn.MSELoss()
+        mseLoss = MSE(output[:,0:4], mseTarget)
 
-        mse = nn.MSELoss()
-        mseLoss = mse(output[:,0:4], mseTarget)
-        #print("mseLoss", mseLoss)
-
-        ce = nn.CrossEntropyLoss()
-        ceLoss = ce(output[:,4:], target[:,-1].long())
-        #print("ceLoss", ceLoss)
+        # Cross Entropy multiclass
+        print(f'output tensor: {output[:,4:]}')
+        print(f'target tensor: { target[:,-1]}')
+        CE = nn.CrossEntropyLoss()
+        ceLoss = CE(output[:,4:], target[:,-1].long())
 
         totalLoss = self._alpha*ceLoss + mseLoss
-        #print("totalLoss", totalLoss)
 
         return totalLoss
         # ------------------------ Laboratoire 2 - Question 4 - Fin de la section à compléter --------------------------
