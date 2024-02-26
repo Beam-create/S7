@@ -13,6 +13,7 @@ from torchvision import transforms
 
 from models.classification_network import AlexNet
 from models.detection_network import AlexNetDetect, detectionLoss
+from models.segmentation_network import Unet, SegmentationLoss
 from metrics import AccuracyMetric, MeanAveragePrecisionMetric, SegmentationIntersectionOverUnionMetric
 from visualizer import Visualizer
 from dataset import ConveyorSimulator
@@ -56,8 +57,7 @@ class ConveyorCnnTrainer():
             return AlexNetDetect()
 
         elif task == 'segmentation':
-            # À compléter
-            raise NotImplementedError()
+            return Unet()
         else:
             raise ValueError('Not supported task')
 
@@ -69,8 +69,7 @@ class ConveyorCnnTrainer():
             return detectionLoss()
 
         elif task == 'segmentation':
-            # À compléter
-            raise NotImplementedError()
+            return SegmentationLoss()
         else:
             raise ValueError('Not supported task')
 
@@ -278,8 +277,17 @@ class ConveyorCnnTrainer():
             return loss
 
         elif task == 'segmentation':
-            # À compléter
-            raise NotImplementedError()
+            # forward
+            ypred = model(image)
+            loss = criterion(ypred, segmentation_target)
+            metric.accumulate(ypred, segmentation_target)
+
+            # backward et optimiser
+            loss.backward()
+            optimizer.step()
+
+            return loss
+
         else:
             raise ValueError('Not supported task')
 
@@ -338,8 +346,13 @@ class ConveyorCnnTrainer():
             return loss
 
         elif task == 'segmentation':
-            # À compléter
-            raise NotImplementedError()
+            # forward
+            ypred = model(image)
+            loss = criterion(ypred, segmentation_target)
+            metric.accumulate(ypred, segmentation_target)
+
+            return loss
+
         else:
             raise ValueError('Not supported task')
 

@@ -40,71 +40,98 @@ class UpSample(nn.Module):
 class Unet(nn.Module):
     def __init__(self, img_channels: int=1, num_classes: int=4):
         super(Unet, self).__init__()
-        self.hidden = None
-        # Image padding
-        self.target_size = (64, 64)
-        # Calculate the padding values
-        self.pad_height = max(0, self.target_size[0] - 53)
-        self.pad_width = max(0, self.target_size[1] - 53)
-        self.sz = 4
-        self.relu = nn.ReLU()
-        # Down 1
-        self.conv_1_1 = nn.Conv2d(img_channels, 2**self.sz, kernel_size=3, padding=1)
-        self.conv_1_2 = nn.Conv2d(2**self.sz, 2**self.sz, kernel_size=3, padding=1)
-        self.bn1 = nn.BatchNorm2d(2**self.sz)
 
-        # Down 2
-        self.maxpool_2 = nn.MaxPool2d(2, stride=2, padding=0)
-        self.conv_2_1 = nn.Conv2d(2**(self.sz), 2**(self.sz+1), kernel_size=3, padding=1)
-        self.conv_2_2 = nn.Conv2d(2**(self.sz+1), 2**(self.sz+1), kernel_size=3, padding=1)
-        self.bn2 = nn.BatchNorm2d(2**(self.sz+1))
+        self.sigmoid = nn.Sigmoid()
 
-        # Down 3
-        self.maxpool_3 = nn.MaxPool2d(2, stride=2, padding=0)
-        self.conv_3_1 = nn.Conv2d(2**(self.sz+1), 2**(self.sz+2), kernel_size=3, padding=1)
-        self.conv_3_2 = nn.Conv2d(2**(self.sz+2), 2**(self.sz+2), kernel_size=3, padding=1)
-        self.bn3 = nn.BatchNorm2d(2**(self.sz+2))
+        self.down1 = nn.Sequential(
+            nn.Conv2d(1, 8, kernel_size=3, padding=1),
+            nn.BatchNorm2d(8),
+            nn.ReLU(),
+            nn.Conv2d(8, 8, kernel_size=3, padding=1),
+            nn.BatchNorm2d(8),
+            nn.ReLU()
+        )
 
-        # Down 4
-        self.maxpool_4 = nn.MaxPool2d(2, stride=2, padding=0)
-        self.conv_4_1 = nn.Conv2d(2**(self.sz+2), 2**(self.sz+3), kernel_size=3, padding=1)
-        self.conv_4_2 = nn.Conv2d(2**(self.sz+3), 2**(self.sz+3), kernel_size=3, padding=1)
-        self.bn4 = nn.BatchNorm2d(2**(self.sz+3))
+        self.down2 = nn.Sequential(
+            nn.MaxPool2d(kernel_size=3, stride=2),
+            nn.Conv2d(8, 16, kernel_size=3, padding=1),
+            nn.BatchNorm2d(16),
+            nn.ReLU(),
+            nn.Conv2d(16, 16, kernel_size=3, padding=1),
+            nn.BatchNorm2d(16),
+            nn.ReLU()
+        )
 
-        # Down 5
-        self.maxpool_5 = nn.MaxPool2d(2, stride=2, padding=0)
-        self.conv_5_1 = nn.Conv2d(2**(self.sz+3), 2**(self.sz+4), kernel_size=3, padding=1)
-        self.bn5_1 = nn.BatchNorm2d(2 ** (self.sz + 4))
-        self.conv_5_2 = nn.Conv2d(2**(self.sz+4), 2**(self.sz+3), kernel_size=3, padding=1)
-        self.bn5_2 = nn.BatchNorm2d(2 ** (self.sz + 3))
+        self.down3 = nn.Sequential(
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(16, 32, kernel_size=3, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.Conv2d(32, 32, kernel_size=3, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU()
+        )
 
-        # Up 6
-        self.upsample_6 = nn.ConvTranspose2d(2**(self.sz+3), 2**(self.sz+3), kernel_size=2, padding=0, stride=2)
-        self.conv_6_1 = nn.Conv2d(2**(self.sz+4), 2**(self.sz+3), kernel_size=3, padding=1)
-        self.bn6_1 = nn.BatchNorm2d(2 ** (self.sz + 3))
-        self.conv_6_2 = nn.Conv2d(2**(self.sz+3), 2**(self.sz+2), kernel_size=3, padding=1)
-        self.bn6_2 = nn.BatchNorm2d(2 ** (self.sz + 2))
+        self.down4 = nn.Sequential(
+            nn.MaxPool2d(kernel_size=3, stride=2),
+            nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU()
+        )
 
-        # Up 7
-        self.upsample_7 = nn.ConvTranspose2d(2**(self.sz+2), 2**(self.sz+2), kernel_size=2, padding=0, stride=2)
-        self.conv_7_1 = nn.Conv2d(2**(self.sz+3), 2**(self.sz+2), kernel_size=3, padding=1)
-        self.bn7_1 = nn.BatchNorm2d(2 ** (self.sz + 2))
-        self.conv_7_2 = nn.Conv2d(2**(self.sz+2), 2**(self.sz+1), kernel_size=3, padding=1)
-        self.bn7_2 = nn.BatchNorm2d(2 ** (self.sz + 1))
+        self.down5 = nn.Sequential(
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(64, 128, kernel_size=3, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            nn.Conv2d(128, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2)
+        )
 
-        # Up 8
-        self.upsample_8 = nn.ConvTranspose2d(2**(self.sz+1), 2**(self.sz+1), kernel_size=2, padding=0, stride=2)
-        self.conv_8_1 = nn.Conv2d(2**(self.sz+2), 2**(self.sz+1), kernel_size=3, padding=1)
-        self.bn8_1 = nn.BatchNorm2d(2**(self.sz+1))
-        self.conv_8_2 = nn.Conv2d(2**(self.sz+1), 2**self.sz, kernel_size=3, padding=1)
-        self.bn8_2 = nn.BatchNorm2d(2 ** (self.sz))
+        self.up1 = nn.Sequential(
+            nn.Conv2d(128, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.Conv2d(64, 32, kernel_size=3, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.ConvTranspose2d(32, 32, kernel_size=3, stride=2)
+        )
 
-        # Up 9
-        self.upsample_9 = nn.ConvTranspose2d(2**(self.sz), 2**(self.sz), kernel_size=2, padding=0, stride=2)
-        self.conv_9_1 = nn.Conv2d(2**(self.sz+1), 2**(self.sz), kernel_size=3, padding=1)
-        self.bn9 = nn.BatchNorm2d(2 ** (self.sz))
-        self.conv_9_2 = nn.Conv2d(2**(self.sz), 2**(self.sz), kernel_size=3, padding=1)
-        self.conv_end = nn.Conv2d(2**(self.sz), num_classes, kernel_size=1, padding=0)
+        self.up2 = nn.Sequential(
+            nn.Conv2d(64, 32, kernel_size=3, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.Conv2d(32, 16, kernel_size=3, padding=1),
+            nn.BatchNorm2d(16),
+            nn.ReLU(),
+            nn.ConvTranspose2d(16, 16, kernel_size=2, stride=2)
+        )
+
+        self.up3 = nn.Sequential(
+            nn.Conv2d(32, 16, kernel_size=3, padding=1),
+            nn.BatchNorm2d(16),
+            nn.ReLU(),
+            nn.Conv2d(16, 8, kernel_size=3, padding=1),
+            nn.BatchNorm2d(8),
+            nn.ReLU(),
+            nn.ConvTranspose2d(8, 8, kernel_size=3, stride=2)
+        )
+
+        self.up4 = nn.Sequential(
+            nn.Conv2d(16, 8, kernel_size=3, padding=1),
+            nn.BatchNorm2d(8),
+            nn.ReLU(),
+            nn.Conv2d(8, 8, kernel_size=3, padding=1),
+            nn.BatchNorm2d(8),
+            nn.ReLU(),
+            nn.Conv2d(8, 4, kernel_size=3, padding=1),
+        )
 
     def pad_to(self, x: Tensor, stride: int=16):
         h, w = x.shape[-2:]
@@ -141,97 +168,38 @@ class Unet(nn.Module):
         return x
 
     def forward(self, x: Tensor):
-        # Pad image to fit to size 64x64
-        y, pads = self.pad_to(x)
-        # y = self.pad_to(x, 64)
-        # Down 1
-        # y = self.conv_1_1(padded_image)
-        y = self.conv_1_1(y)
-        y = self.bn1(y)
-        # print(y.size())
-        y = self.relu(y)
-        y = self.conv_1_2(y)
-        y = self.bn1(y)
-        y_1 = self.relu(y)
+        x1 = self.down1(x)
 
-        # Down 2
-        y = self.maxpool_2(y_1)
-        y = self.conv_2_1(y)
-        y = self.bn2(y)
-        y = self.relu(y)
-        y = self.conv_2_2(y)
-        y = self.bn2(y)
-        y_2 = self.relu(y)
+        x2 = self.down2(x1)
 
-        # Down 3
-        y = self.maxpool_3(y_2)
-        y = self.conv_3_1(y)
-        y = self.bn3(y)
-        y = self.relu(y)
-        y = self.conv_3_2(y)
-        y = self.bn3(y)
-        y_3 = self.relu(y)
+        x3 = self.down3(x2)
 
-        # Down 4
-        y = self.maxpool_4(y_3)
-        y = self.conv_4_1(y)
-        y = self.bn4(y)
-        y = self.relu(y)
-        y = self.conv_4_2(y)
-        y = self.bn4(y)
-        y_4 = self.relu(y)
+        x4 = self.down4(x3)
 
-        # Down 5
-        y = self.maxpool_5(y_4)
+        x5 = self.down5(x4)
 
-        y = self.conv_5_1(y)
-        y = self.bn5_1(y)
-        y = self.relu(y)
-        y = self.conv_5_2(y)
-        y = self.bn5_2(y)
-        y = self.relu(y)
+        u1 = torch.cat([x5, x4], 1)
+        u1 = self.up1(u1)
 
-        # Up 6
-        y = self.upsample_6(y)
-        y = torch.cat([y, y_4], 1)
-        y = self.conv_6_1(y)
-        y = self.bn6_1(y)
-        y = self.relu(y)
-        y = self.conv_6_2(y)
-        y = self.bn6_2(y)
-        y = self.relu(y)
+        u2 = torch.cat([u1, x3], dim=1)
+        u2 = self.up2(u2)
 
-        # Up 7
-        y = self.upsample_7(y)
-        y = torch.cat([y, y_3], 1)
-        y = self.conv_7_1(y)
-        y = self.bn7_1(y)
-        y = self.relu(y)
-        y = self.conv_7_2(y)
-        y = self.bn7_2(y)
-        y = self.relu(y)
+        u3 = torch.cat([u2, x2], dim=1)
+        u3 = self.up3(u3)
 
-        # Up 8
-        y = self.upsample_8(y)
-        y = torch.cat([y, y_2], 1)
-        y = self.conv_8_1(y)
-        y = self.bn8_1(y)
-        y = self.relu(y)
-        y = self.conv_8_2(y)
-        y = self.bn8_2(y)
-        y = self.relu(y)
+        u4 = torch.cat([u3, x1], dim=1)
+        u4 = self.up4(u4)
 
-        # Up 9
-        y = self.upsample_9(y)
-        y = torch.cat([y, y_1], 1)
-        y = self.conv_9_1(y)
-        y = self.bn9(y)
-        y = self.relu(y)
-        y = self.conv_9_2(y)
-        y = self.bn9(y)
-        y = self.relu(y)
-        y = self.conv_end(y)
-        y = nn.Sigmoid()(y)
-        y = self.unpad(y, pads)
-        # y = self.unpad(y, 53)
+        y = self.sigmoid(u4)
+
         return y
+
+
+class SegmentationLoss(nn.Module):
+    def init(self):
+        super(SegmentationLoss, self).init()
+
+    def forward(self, output, target):
+        one_hot_encoded = torch.nn.functional.one_hot(target, num_classes=4).permute(0, 3, 1, 2).float()
+        loss = nn.BCELoss()(output, one_hot_encoded)
+        return loss
