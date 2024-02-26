@@ -28,7 +28,7 @@ class ConveyorCnnTrainer():
         use_cuda = args.use_gpu and torch.cuda.is_available()
         self._device = torch.device('cuda' if use_cuda else 'cpu')
         seed = np.random.rand()
-        torch.manual_seed(seed)
+        torch.manual_seed(3221)
         self.transform = transforms.Compose([transforms.ToTensor()])
 
         # Generation des 'path'
