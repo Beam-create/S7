@@ -1,0 +1,19 @@
+For classification
+
+--mode
+train
+--task
+classification
+--use_gpu
+--epochs 100
+--lr 5e-5
+
+For Detection
+
+--mode
+train
+--task
+detection
+--use_gpu
+--epochs 200
+--lr 5e-5

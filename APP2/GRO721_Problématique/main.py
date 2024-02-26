@@ -1,15 +1,21 @@
 #! usr/bin/python3
-import argparse
+import glob
 import os
 
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.optim as optim
+import argparse
+from matplotlib import cm
+from matplotlib.colors import ListedColormap
 from torchvision import transforms
 
-from dataset import ConveyorSimulator
+from models.classification_network import AlexNet
+from models.detection_network import AlexNetDetect, detectionLoss
 from metrics import AccuracyMetric, MeanAveragePrecisionMetric, SegmentationIntersectionOverUnionMetric
 from visualizer import Visualizer
+from dataset import ConveyorSimulator
 
 TRAIN_VALIDATION_SPLIT = 0.9
 CLASS_PROBABILITY_THRESHOLD = 0.5
@@ -25,7 +31,7 @@ class ConveyorCnnTrainer():
         use_cuda = args.use_gpu and torch.cuda.is_available()
         self._device = torch.device('cuda' if use_cuda else 'cpu')
         seed = np.random.rand()
-        torch.manual_seed(seed)
+        torch.manual_seed(3221)
         self.transform = transforms.Compose([transforms.ToTensor()])
 
         # Generation des 'path'
@@ -44,11 +50,11 @@ class ConveyorCnnTrainer():
 
     def _create_model(self, task):
         if task == 'classification':
-            # À compléter
-            raise NotImplementedError()
+            return AlexNet(1, 3)
+
         elif task == 'detection':
-            # À compléter
-            raise NotImplementedError()
+            return AlexNetDetect()
+
         elif task == 'segmentation':
             # À compléter
             raise NotImplementedError()
@@ -57,11 +63,11 @@ class ConveyorCnnTrainer():
 
     def _create_criterion(self, task):
         if task == 'classification':
-            # À compléter
-            raise NotImplementedError()
+            return torch.nn.BCEWithLogitsLoss()
+
         elif task == 'detection':
-            # À compléter
-            raise NotImplementedError()
+            return detectionLoss()
+
         elif task == 'segmentation':
             # À compléter
             raise NotImplementedError()
@@ -119,8 +125,8 @@ class ConveyorCnnTrainer():
         best_validation = 0
         nb_worse_validation = 0
 
-        params_train = {'batch_size': self._args.batch_size, 'shuffle': True, 'num_workers': 4}
-        params_validation = {'batch_size': self._args.batch_size, 'shuffle': False, 'num_workers': 4}
+        params_train = {'batch_size': self._args.batch_size, 'shuffle': True, 'num_workers': 0}
+        params_validation = {'batch_size': self._args.batch_size, 'shuffle': False, 'num_workers': 0}
 
         dataset_trainval = ConveyorSimulator(self._train_data_path, self.transform)
         dataset_train, dataset_validation = torch.utils.data.random_split(dataset_trainval,
@@ -204,7 +210,7 @@ class ConveyorCnnTrainer():
                                             epochs_train_metrics, epochs_validation_metrics,
                                             train_metric.get_name())
 
-        ans = input('Do you want ot test? (y/n):')
+        ans = input('Do you want to test? (y/n):')
         if ans == 'y':
             self.test()
 
@@ -247,8 +253,35 @@ class ConveyorCnnTrainer():
         :return: La valeur de la fonction de coût pour le lot
         """
 
-        # À compléter
-        raise NotImplementedError()
+        if task == 'classification':
+            # forward
+            ypred = model(image)
+            loss = criterion(ypred, class_labels)
+            metric.accumulate(ypred, class_labels)
+
+            # backward et optimiser
+            loss.backward()
+            optimizer.step()
+
+            return loss
+
+        elif task == 'detection':
+            # forward
+            ypred = model(image)
+            loss = criterion(ypred, boxes)
+            metric.accumulate(ypred, boxes)
+
+            # backward et optimiser
+            loss.backward()
+            optimizer.step()
+
+            return loss
+
+        elif task == 'segmentation':
+            # À compléter
+            raise NotImplementedError()
+        else:
+            raise ValueError('Not supported task')
 
     def _test_batch(self, task, model, criterion, metric, image, segmentation_target, boxes, class_labels):
         """
@@ -288,8 +321,27 @@ class ConveyorCnnTrainer():
         :return: La valeur de la fonction de coût pour le lot
         """
 
-        # À compléter
-        raise NotImplementedError()
+        if task == 'classification':
+            # forward
+            ypred = model(image)
+            loss = criterion(ypred, class_labels)
+            metric.accumulate(ypred, class_labels)
+
+            return loss
+
+        elif task == 'detection':
+            # forward
+            ypred = model(image)
+            loss = criterion(ypred, boxes)
+            metric.accumulate(ypred, boxes)
+
+            return loss
+
+        elif task == 'segmentation':
+            # À compléter
+            raise NotImplementedError()
+        else:
+            raise ValueError('Not supported task')
 
 
 if __name__ == '__main__':
@@ -299,14 +351,14 @@ if __name__ == '__main__':
     parser.add_argument('--task', choices=['classification', 'detection', 'segmentation'],
                         help='The CNN task', required=True)
     parser.add_argument('--batch_size', type=int, default=32, help='Batch size for training and testing (default: 32)')
-    parser.add_argument('--epochs', type=int, default=20, help='number of epochs for training (default: 20)')
+    parser.add_argument('--epochs', type=int, default=100, help='number of epochs for training (default: 20)')
     parser.add_argument('--lr', type=float, default=4e-4, help='learning rate used for training (default: 4e-4)')
     parser.add_argument('--use_gpu', action='store_true', help='use the gpu instead of the cpu')
-    parser.add_argument('--early_stop', type=int, default=25,
+    parser.add_argument('--early_stop', type=int, default=5,
                         help='number of worse validation loss before quitting training (default: 25)')
 
     args = parser.parse_args()
-
+    #args.lr = 5e-5
     conv = ConveyorCnnTrainer(args)
 
     if args.mode == 'train':
