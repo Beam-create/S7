@@ -79,7 +79,7 @@ class ConveyorCnnTrainer():
             raise ValueError('Not supported task')
 
     def test(self):
-        params_test = {'batch_size': self._args.batch_size, 'shuffle': False, 'num_workers': 4}
+        params_test = {'batch_size': self._args.batch_size, 'shuffle': False, 'num_workers': 0}
 
         dataset_test = ConveyorSimulator(self._test_data_path, self.transform)
         test_loader = torch.utils.data.DataLoader(dataset_test, **params_test)
@@ -119,8 +119,8 @@ class ConveyorCnnTrainer():
         best_validation = 0
         nb_worse_validation = 0
 
-        params_train = {'batch_size': self._args.batch_size, 'shuffle': True, 'num_workers': 4}
-        params_validation = {'batch_size': self._args.batch_size, 'shuffle': False, 'num_workers': 4}
+        params_train = {'batch_size': self._args.batch_size, 'shuffle': True, 'num_workers': 0}
+        params_validation = {'batch_size': self._args.batch_size, 'shuffle': False, 'num_workers': 0}
 
         dataset_trainval = ConveyorSimulator(self._train_data_path, self.transform)
         dataset_train, dataset_validation = torch.utils.data.random_split(dataset_trainval,
@@ -257,8 +257,9 @@ class ConveyorCnnTrainer():
             optimizer.step()
         elif task == "segmentation":
             output = model(image)
+            segmentation_target_copy = torch.nn.functional.one_hot(segmentation_target, num_classes=4).permute(0,3,1,2).float()
             metric.accumulate(output, segmentation_target)
-            loss = criterion(output, segmentation_target)
+            loss = criterion(output, segmentation_target_copy)
             loss.backward()
             optimizer.step()
         return loss
@@ -307,8 +308,9 @@ class ConveyorCnnTrainer():
             loss = criterion(output, class_labels)
         elif task == "segmentation":
             output = model(image)
+            segmentation_target_copy = torch.nn.functional.one_hot(segmentation_target, num_classes=4).permute(0,3,1,2).float()
             metric.accumulate(output, segmentation_target)
-            loss = criterion(output, segmentation_target)
+            loss = criterion(output, segmentation_target_copy)
         return loss
 
 
