@@ -1,22 +1,18 @@
 #! usr/bin/python3
-import glob
+import argparse
 import os
 
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.optim as optim
-import argparse
-from matplotlib import cm
-from matplotlib.colors import ListedColormap
 from torchvision import transforms
 
-from models.classification_network import AlexNet
-from models.detection_network import AlexNetDetect, detectionLoss
-from models.segmentation_network import Unet, SegmentationLoss
+from dataset import ConveyorSimulator
 from metrics import AccuracyMetric, MeanAveragePrecisionMetric, SegmentationIntersectionOverUnionMetric
 from visualizer import Visualizer
-from dataset import ConveyorSimulator
+
+from models.classification_network import ResNet
+from models.segmentation_network import Unet, SegmentationLoss
 
 TRAIN_VALIDATION_SPLIT = 0.9
 CLASS_PROBABILITY_THRESHOLD = 0.5
@@ -51,23 +47,22 @@ class ConveyorCnnTrainer():
 
     def _create_model(self, task):
         if task == 'classification':
-            return AlexNet(1, 3)
-
+            model = ResNet(img_channels=1, num_classes=3)
         elif task == 'detection':
-            return AlexNetDetect()
-
+            # À compléter
+            raise NotImplementedError()
         elif task == 'segmentation':
-            return Unet()
+            model = Unet(img_channels=1, num_classes=4)
         else:
             raise ValueError('Not supported task')
+        return model
 
     def _create_criterion(self, task):
         if task == 'classification':
             return torch.nn.BCEWithLogitsLoss()
-
         elif task == 'detection':
-            return detectionLoss()
-
+            # À compléter
+            raise NotImplementedError()
         elif task == 'segmentation':
             return SegmentationLoss()
         else:
@@ -84,7 +79,7 @@ class ConveyorCnnTrainer():
             raise ValueError('Not supported task')
 
     def test(self):
-        params_test = {'batch_size': self._args.batch_size, 'shuffle': False, 'num_workers': 4}
+        params_test = {'batch_size': self._args.batch_size, 'shuffle': False, 'num_workers': 0}
 
         dataset_test = ConveyorSimulator(self._test_data_path, self.transform)
         test_loader = torch.utils.data.DataLoader(dataset_test, **params_test)
@@ -209,7 +204,7 @@ class ConveyorCnnTrainer():
                                             epochs_train_metrics, epochs_validation_metrics,
                                             train_metric.get_name())
 
-        ans = input('Do you want to test? (y/n):')
+        ans = input('Do you want ot test? (y/n):')
         if ans == 'y':
             self.test()
 
@@ -252,44 +247,21 @@ class ConveyorCnnTrainer():
         :return: La valeur de la fonction de coût pour le lot
         """
 
-        if task == 'classification':
-            # forward
-            ypred = model(image)
-            loss = criterion(ypred, class_labels)
-            metric.accumulate(ypred, class_labels)
-
-            # backward et optimiser
+        # À compléter
+        optimizer.zero_grad()
+        if task == "classification":
+            output = model(image)
+            metric.accumulate(output, class_labels)
+            loss = criterion(output, class_labels)
             loss.backward()
             optimizer.step()
-
-            return loss
-
-        elif task == 'detection':
-            # forward
-            ypred = model(image)
-            loss = criterion(ypred, boxes)
-            metric.accumulate(ypred, boxes)
-
-            # backward et optimiser
+        elif task == "segmentation":
+            output = model(image)
+            loss = criterion(output, segmentation_target)
             loss.backward()
             optimizer.step()
-
-            return loss
-
-        elif task == 'segmentation':
-            # forward
-            ypred = model(image)
-            loss = criterion(ypred, segmentation_target)
-            metric.accumulate(ypred, segmentation_target)
-
-            # backward et optimiser
-            loss.backward()
-            optimizer.step()
-
-            return loss
-
-        else:
-            raise ValueError('Not supported task')
+            metric.accumulate(output, segmentation_target)
+        return loss
 
     def _test_batch(self, task, model, criterion, metric, image, segmentation_target, boxes, class_labels):
         """
@@ -329,32 +301,15 @@ class ConveyorCnnTrainer():
         :return: La valeur de la fonction de coût pour le lot
         """
 
-        if task == 'classification':
-            # forward
-            ypred = model(image)
-            loss = criterion(ypred, class_labels)
-            metric.accumulate(ypred, class_labels)
-
-            return loss
-
-        elif task == 'detection':
-            # forward
-            ypred = model(image)
-            loss = criterion(ypred, boxes)
-            metric.accumulate(ypred, boxes)
-
-            return loss
-
-        elif task == 'segmentation':
-            # forward
-            ypred = model(image)
-            loss = criterion(ypred, segmentation_target)
-            metric.accumulate(ypred, segmentation_target)
-
-            return loss
-
-        else:
-            raise ValueError('Not supported task')
+        if task == "classification":
+            output = model(image)
+            metric.accumulate(output, class_labels)
+            loss = criterion(output, class_labels)
+        elif task == "segmentation":
+            output = model(image)
+            loss = criterion(output, segmentation_target)
+            metric.accumulate(output, segmentation_target)
+        return loss
 
 
 if __name__ == '__main__':
@@ -364,14 +319,14 @@ if __name__ == '__main__':
     parser.add_argument('--task', choices=['classification', 'detection', 'segmentation'],
                         help='The CNN task', required=True)
     parser.add_argument('--batch_size', type=int, default=32, help='Batch size for training and testing (default: 32)')
-    parser.add_argument('--epochs', type=int, default=100, help='number of epochs for training (default: 20)')
+    parser.add_argument('--epochs', type=int, default=20, help='number of epochs for training (default: 20)')
     parser.add_argument('--lr', type=float, default=4e-4, help='learning rate used for training (default: 4e-4)')
     parser.add_argument('--use_gpu', action='store_true', help='use the gpu instead of the cpu')
-    parser.add_argument('--early_stop', type=int, default=5,
+    parser.add_argument('--early_stop', type=int, default=25,
                         help='number of worse validation loss before quitting training (default: 25)')
 
     args = parser.parse_args()
-    #args.lr = 5e-5
+
     conv = ConveyorCnnTrainer(args)
 
     if args.mode == 'train':
