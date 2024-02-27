@@ -11,7 +11,8 @@ from dataset import ConveyorSimulator
 from metrics import AccuracyMetric, MeanAveragePrecisionMetric, SegmentationIntersectionOverUnionMetric
 from visualizer import Visualizer
 
-from models.classification_network import ResNet
+from models.classification_network import AlexNet
+from models.detection_network import AlexNetDetect, detectionLoss
 from models.segmentation_network import Unet, SegmentationLoss
 
 TRAIN_VALIDATION_SPLIT = 0.9
@@ -28,7 +29,7 @@ class ConveyorCnnTrainer():
         use_cuda = args.use_gpu and torch.cuda.is_available()
         self._device = torch.device('cuda' if use_cuda else 'cpu')
         seed = np.random.rand()
-        torch.manual_seed(3221)
+        torch.manual_seed(1)
         self.transform = transforms.Compose([transforms.ToTensor()])
 
         # Generation des 'path'
@@ -47,10 +48,11 @@ class ConveyorCnnTrainer():
 
     def _create_model(self, task):
         if task == 'classification':
-            model = ResNet(img_channels=1, num_classes=3)
+            model = AlexNet(1, 3)
+
         elif task == 'detection':
-            # À compléter
-            raise NotImplementedError()
+            model = AlexNetDetect()
+
         elif task == 'segmentation':
             model = Unet(img_channels=1, num_classes=4)
         else:
@@ -60,11 +62,13 @@ class ConveyorCnnTrainer():
     def _create_criterion(self, task):
         if task == 'classification':
             return torch.nn.BCEWithLogitsLoss()
+
         elif task == 'detection':
-            # À compléter
-            raise NotImplementedError()
+            return detectionLoss()
+
         elif task == 'segmentation':
             return SegmentationLoss()
+
         else:
             raise ValueError('Not supported task')
 
@@ -250,17 +254,35 @@ class ConveyorCnnTrainer():
         # À compléter
         optimizer.zero_grad()
         if task == "classification":
+            # Forward
             output = model(image)
             metric.accumulate(output, class_labels)
             loss = criterion(output, class_labels)
+
+            # Backward
             loss.backward()
             optimizer.step()
+
+        elif task == "detection":
+            # Forward
+            output = model(image)
+            loss = criterion(output, boxes)
+            metric.accumulate(output, boxes)
+
+            # Backward
+            loss.backward()
+            optimizer.step()
+
         elif task == "segmentation":
+            # Forward
             output = model(image)
             loss = criterion(output, segmentation_target)
+            metric.accumulate(output, segmentation_target)
+
+            # Backward
             loss.backward()
             optimizer.step()
-            metric.accumulate(output, segmentation_target)
+
         return loss
 
     def _test_batch(self, task, model, criterion, metric, image, segmentation_target, boxes, class_labels):
