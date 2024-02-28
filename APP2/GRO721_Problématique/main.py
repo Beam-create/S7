@@ -1,15 +1,16 @@
 #! usr/bin/python3
 import glob
+import argparse
 import os
 
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.optim as optim
-import argparse
-from matplotlib import cm
-from matplotlib.colors import ListedColormap
 from torchvision import transforms
+
+from dataset import ConveyorSimulator
+from metrics import AccuracyMetric, MeanAveragePrecisionMetric, SegmentationIntersectionOverUnionMetric
+from visualizer import Visualizer
 
 from models.classification_network import AlexNet
 from models.detection_network import AlexNetDetect, detectionLoss
@@ -32,7 +33,7 @@ class ConveyorCnnTrainer():
         use_cuda = args.use_gpu and torch.cuda.is_available()
         self._device = torch.device('cuda' if use_cuda else 'cpu')
         seed = np.random.rand()
-        torch.manual_seed(3221)
+        torch.manual_seed(1)
         self.transform = transforms.Compose([transforms.ToTensor()])
 
         # Generation des 'path'
@@ -57,7 +58,8 @@ class ConveyorCnnTrainer():
             return AlexNetDetect()
 
         elif task == 'segmentation':
-            return Unet()
+            return Unet(img_channels=1, num_classes=4)
+        
         else:
             raise ValueError('Not supported task')
 
@@ -70,6 +72,7 @@ class ConveyorCnnTrainer():
 
         elif task == 'segmentation':
             return SegmentationLoss()
+
         else:
             raise ValueError('Not supported task')
 
@@ -84,7 +87,7 @@ class ConveyorCnnTrainer():
             raise ValueError('Not supported task')
 
     def test(self):
-        params_test = {'batch_size': self._args.batch_size, 'shuffle': False, 'num_workers': 4}
+        params_test = {'batch_size': self._args.batch_size, 'shuffle': False, 'num_workers': 0}
 
         dataset_test = ConveyorSimulator(self._test_data_path, self.transform)
         test_loader = torch.utils.data.DataLoader(dataset_test, **params_test)
@@ -364,14 +367,14 @@ if __name__ == '__main__':
     parser.add_argument('--task', choices=['classification', 'detection', 'segmentation'],
                         help='The CNN task', required=True)
     parser.add_argument('--batch_size', type=int, default=32, help='Batch size for training and testing (default: 32)')
-    parser.add_argument('--epochs', type=int, default=100, help='number of epochs for training (default: 20)')
+    parser.add_argument('--epochs', type=int, default=20, help='number of epochs for training (default: 20)')
     parser.add_argument('--lr', type=float, default=4e-4, help='learning rate used for training (default: 4e-4)')
     parser.add_argument('--use_gpu', action='store_true', help='use the gpu instead of the cpu')
-    parser.add_argument('--early_stop', type=int, default=5,
+    parser.add_argument('--early_stop', type=int, default=25,
                         help='number of worse validation loss before quitting training (default: 25)')
 
     args = parser.parse_args()
-    #args.lr = 5e-5
+
     conv = ConveyorCnnTrainer(args)
 
     if args.mode == 'train':
