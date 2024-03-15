@@ -22,7 +22,7 @@ if __name__ =="__main__":
     training = True             # Faire l'entrainement sur l'ensemble de donnees
     learning_curves = True      # Visualiser les courbes d'apprentissage pendant l'entrainement
     test_tagging = False         # Visualiser l'annotation sur des echantillons de validation
-    test_generation = False     # Visualiser la generation sur des echantillons de validation
+    test_generation = True     # Visualiser la generation sur des echantillons de validation
 
     batch_size = 10             # Taille des lots
     n_epochs = 50               # Nombre d'iteration sur l'ensemble de donnees
@@ -91,8 +91,13 @@ if __name__ =="__main__":
                 in_seq, target_seq = [obj.to(device).float() for obj in data]
 
                 # ---------------------- Laboratoire 1 - Question 3 - Début de la section à compléter ------------------
-
-                
+                optimizer.zero_grad()
+                output, h = model(in_seq)
+                output = output.squeeze(-1)
+                loss = criterion(output, target_seq)
+                running_loss_train += loss.item()
+                loss.backward()
+                optimizer.step()
                 # ---------------------- Laboratoire 1 - Question 3 - Fin de la section à compléter ------------------
             
                 # Affichage pendant l'entraînement
@@ -108,8 +113,10 @@ if __name__ =="__main__":
                 in_seq, target_seq = [obj.to(device).float() for obj in data]
 
                 # ---------------------- Laboratoire 1 - Question 3 - Début de la section à compléter ------------------
-                
-
+                output, h = model(in_seq)
+                output = output.squeeze(-1)
+                loss = criterion(output, target_seq)
+                running_loss_val += loss.item()
                 # ---------------------- Laboratoire 1 - Question 3 - Fin de la section à compléter ------------------
 
             print('\nValidation - Average loss: {:.4f}'.format(running_loss_val/len(dataload_val)))
@@ -138,56 +145,63 @@ if __name__ =="__main__":
 
 
     if test_tagging:
-        # Évaluation étiquettage
-        model = torch.load('model.pt', map_location=lambda storage, loc: storage)
-        model = model.to(device)
-        model.eval()
-        for num in range(10):
-            # Extraction d'une séquence du dataset de validation
-            input_sequence, target_sequence = dataset_val[np.random.randint(0,len(dataset_val))]
+        with torch.no_grad():
+            # Évaluation étiquettage
+            model = torch.load('model.pt', map_location=lambda storage, loc: storage)
+            model = model.to(device)
+            model.eval()
+            for num in range(10):
+                # Extraction d'une séquence du dataset de validation
+                input_sequence, target_sequence = dataset_val[np.random.randint(0,len(dataset_val))]
 
-            # Initialisation de la prédiction de sortie
-            prediction_sequence = np.zeros(len(input_sequence))
+                # Initialisation de la prédiction de sortie
+                prediction_sequence = np.zeros(len(input_sequence))
 
 
-            # ---------------------- Laboratoire 1 - Question 4 - Début de la section à compléter ------------------
-            
-            
+                # ---------------------- Laboratoire 1 - Question 4 - Début de la section à compléter ------------------
+                prediction_sequence, h = model(input_sequence)
+                prediction_sequence = prediction_sequence.squeeze(-1)
 
-            # ---------------------- Laboratoire 1 - Question 4 - Fin de la section à compléter ------------------
 
-            plt.title("Tagged data")
-            plt.plot(target_sequence)
-            plt.plot(prediction_sequence)
-            plt.show()
+                # ---------------------- Laboratoire 1 - Question 4 - Fin de la section à compléter ------------------
+
+                plt.title("Tagged data")
+                plt.plot(target_sequence)
+                plt.plot(prediction_sequence)
+                plt.show()
 
 
     if test_generation:
-        # Évaluation génération
-        model = torch.load('model.pt', map_location=lambda storage, loc: storage)
-        model = model.to(device)
-        model.eval()
-        for num in range(10):
-            # Extraction d'une séquence du dataset de validation
-            input_sequence, target_sequence = dataset_val[np.random.randint(0,len(dataset_val))]
+        with torch.no_grad():
+            # Évaluation génération
+            model = torch.load('model.pt', map_location=lambda storage, loc: storage)
+            model = model.to(device)
+            model.eval()
+            for num in range(10):
+                # Extraction d'une séquence du dataset de validation
+                input_sequence, target_sequence = dataset_val[np.random.randint(0,len(dataset_val))]
 
-            # Calcul du nombre de prédictions à générer
-            usable_input_sequence_len = len(input_sequence)>>1
-            nb_predictions_to_generate = len(input_sequence)-usable_input_sequence_len
+                # Calcul du nombre de prédictions à générer
+                usable_input_sequence_len = len(input_sequence)>>1
+                nb_predictions_to_generate = len(input_sequence)-usable_input_sequence_len
 
-            # Initialisation de la prédiction de sortie
-            prediction_sequence = np.zeros(nb_predictions_to_generate)
-
-
-            # ---------------------- Laboratoire 1 - Question 5 - Début de la section à compléter ------------------
-        
+                # Initialisation de la prédiction de sortie
+                prediction_sequence = np.zeros(nb_predictions_to_generate)
 
 
-            # ---------------------- Laboratoire 1 - Question 5 - Fin de la section à compléter ------------------
+                # ---------------------- Laboratoire 1 - Question 5 - Début de la section à compléter ------------------
+                input_ = input_sequence[0:usable_input_sequence_len].unsqueeze(0)
+                output, h = model(input_)
+                for i in range(nb_predictions_to_generate-1):
+                    generation_input = output[:,-1]
+                    output, h = model(generation_input, h)
+                    prediction_sequence[i] = output.item()
+
+                # ---------------------- Laboratoire 1 - Question 5 - Fin de la section à compléter ------------------
 
 
-            prediction_t = [i+usable_input_sequence_len for i in range(nb_predictions_to_generate)]
-            plt.plot(target_sequence)
-            plt.plot(prediction_t,prediction_sequence)
-            plt.title("Generated data")
-            plt.show()
+                prediction_t = [i+usable_input_sequence_len for i in range(nb_predictions_to_generate)]
+                plt.plot(target_sequence)
+                plt.plot(prediction_t,prediction_sequence)
+                plt.title("Generated data")
+                plt.show()

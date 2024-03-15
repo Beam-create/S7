@@ -5,26 +5,28 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import matplotlib.pyplot as plt
 import pickle
+import numpy as np
 
 class SignauxDataset(Dataset):
     """Ensemble de signaux continus à differentes fréquences"""
     def __init__(self, filename='data.p'):
         with open(filename, 'rb') as fp:
             self.data = pickle.load(fp)
+            print('Loaded signaux')
 
     def __len__(self):
 
         # ------------------------ Laboratoire 1 - Question 1 - Début de la section à compléter ----------------------------
-        
-        return 0
+        return len(self.data)
 
         # ---------------------- Laboratoire 1 - Question 1 - Fin de la section à compléter --------------------------------
 
     def __getitem__(self, idx):
 
         # ------------------------ Laboratoire 1 - Question 1 - Début de la section à compléter ----------------------------
-        
-        return 0
+        input = torch.Tensor(self.data[idx][0])
+        target = torch.Tensor(self.data[idx][1])
+        return input, target
 
         # ---------------------- Laboratoire 1 - Question 1 - Fin de la section à compléter --------------------------------
     
