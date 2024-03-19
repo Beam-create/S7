@@ -35,9 +35,12 @@ class Seq2seq(nn.Module):
 
         # ---------------------- Laboratoire 2 - Question 3 - Début de la section à compléter -----------------
 
-        out = None
-        hidden = None
-        
+        x_emb_fr = self.fr_embedding(x)
+        x, h = self.encoder_layer(x_emb_fr)
+
+        out = x
+        hidden = h
+
         # ---------------------- Laboratoire 2 - Question 3 - Fin de la section à compléter -----------------
 
         return out, hidden
@@ -54,8 +57,14 @@ class Seq2seq(nn.Module):
         for i in range(max_len):
 
             # ---------------------- Laboratoire 2 - Question 3 - Début de la section à compléter -----------------   
-            
-            vec_out = vec_out
+            vec_emb = self.en_embedding(vec_in)
+            vec_rnn, hidden = self.decoder_layer(vec_emb, hidden)
+            vec_fully = self.fc(vec_rnn)
+
+            idx = torch.argmax(vec_fully, dim=-1)
+
+            vec_in = idx
+            vec_out[:, i, :] = vec_fully.squeeze(1)
 
             # ---------------------- Laboratoire 2 - Question 3 - Début de la section à compléter -----------------
 
@@ -100,8 +109,11 @@ class Seq2seq_attn(nn.Module):
 
         # ---------------------- Laboratoire 2 - Question 4 - Début de la section à compléter -----------------
         
-        out = None
-        hidden = None
+        x_emb_fr = self.fr_embedding(x)
+        x, h = self.encoder_layer(x_emb_fr)
+
+        out = x
+        hidden = h
         
         # ---------------------- Laboratoire 2 - Question 4 - Début de la section à compléter -----------------
 
@@ -116,11 +128,18 @@ class Seq2seq_attn(nn.Module):
         # Attention
 
         # ---------------------- Laboratoire 2 - Question 4 - Début de la section à compléter -----------------
-        
-       
-        attention_weights = None
-        attention_output = None
-        
+
+        N = values.shape[0]
+        He = values.shape[-1]
+        vec_dot = torch.bmm(values, query.view(N, He, 1))
+        vec_dot = vec_dot.squeeze(-1)
+        #vec_dot = torch.tensordot(values, query, dims=[[2], [2]])
+        #vec_dot = vec_dot.squeeze(dim=-1)
+        #vec_dot = torch.sum(vec_dot, dim=2)
+        attention_weights = torch.softmax(vec_dot, 1)
+
+        attention_weights = attention_weights.unsqueeze(1)
+        attention_output = torch.bmm(attention_weights, values)
 
         # ---------------------- Laboratoire 2 - Question 4 - Début de la section à compléter -----------------
 
@@ -140,8 +159,19 @@ class Seq2seq_attn(nn.Module):
         for i in range(max_len):
 
             # ---------------------- Laboratoire 2 - Question 4 - Début de la section à compléter -----------------
-            
-            vec_out = vec_out
+
+            vec_emb = self.en_embedding(vec_in)
+            vec_rnn, hidden = self.decoder_layer(vec_emb, hidden)
+
+            att_out, att_w = self.attentionModule(vec_rnn, encoder_outs)
+            vec_concat = torch.cat((vec_rnn, att_out), dim=2)
+            vec_fully = self.att_combine(vec_concat)
+            vec_fully = self.fc(vec_fully)
+
+            idx = torch.argmax(vec_fully, dim=-1)
+
+            vec_in = idx
+            vec_out[:, i, :] = vec_fully.squeeze(1)
 
             # ---------------------- Laboratoire 2 - Question 4 - Début de la section à compléter -----------------
 
