@@ -11,9 +11,9 @@ class Fr_En(Dataset):
     """Ensemble de donnees de mots/phrases en francais et anglais."""
     def __init__(self, filename='fra.txt', n_samp=2000,start=0, samplelen=[7,10]):
         # Initialisation des variables
-        self.pad_symbol     = pad_symbol = '<pad>'
-        self.start_symbol   = start_symbol = '<sos>'
-        self.stop_symbol    = stop_symbol = '<eos>'
+        self.pad_symbol = pad_symbol = '<pad>'
+        self.start_symbol = start_symbol = '<sos>'
+        self.stop_symbol = stop_symbol = '<eos>'
         
         symb_to_remove = set(['',' ', '\u202f'])
         data = dict()
@@ -74,7 +74,15 @@ class Fr_En(Dataset):
         # ---------------------- Laboratoire 2 - Question 2 - Début de la section à compléter ------------------
         self.max_len['fr'] = 0
         self.max_len['en'] = 0
-
+        num_samples = len(data['fr'])
+        for i in range(num_samples):
+            line_fr = data['fr'][i]
+            line_en = data['en'][i]
+            if len(line) > self.max_len['fr']:
+                self.max_len['fr'] = len(line)
+        for line in data['en']:
+            if len(line) > self.max_len['en']:
+                self.max_len['en'] = len(line)
 
         # ---------------------- Laboratoire 2 - Question 2 - Fin de la section à compléter ------------------
 
