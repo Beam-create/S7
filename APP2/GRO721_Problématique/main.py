@@ -1,5 +1,5 @@
 #! usr/bin/python3
-import glob
+
 import argparse
 import os
 
@@ -8,13 +8,10 @@ import torch
 import torch.optim as optim
 from torchvision import transforms
 
-from dataset import ConveyorSimulator
-from metrics import AccuracyMetric, MeanAveragePrecisionMetric, SegmentationIntersectionOverUnionMetric
-from visualizer import Visualizer
-
 from models.classification_network import AlexNet
 from models.detection_network import AlexNetDetect, detectionLoss
 from models.segmentation_network import Unet, SegmentationLoss
+
 from metrics import AccuracyMetric, MeanAveragePrecisionMetric, SegmentationIntersectionOverUnionMetric
 from visualizer import Visualizer
 from dataset import ConveyorSimulator
