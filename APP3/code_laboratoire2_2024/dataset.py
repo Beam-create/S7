@@ -75,9 +75,39 @@ class Fr_En(Dataset):
         self.max_len['fr'] = 0
         self.max_len['en'] = 0
 
+        # find the max length
+        for i in range(n_samp):
+
+            linefr = data['fr'][i]
+            lineen = data['en'][i]
+
+            # Update max length
+            if len(linefr) > self.max_len['fr']:
+                self.max_len['fr'] = len(linefr)
+
+            # Update max length
+            if len(lineen) > self.max_len['en']:
+                self.max_len['en'] = len(lineen)
+
+        # Pad to length
+        for i in range(n_samp):
+
+            # extract line
+            linefr = data['fr'][i]
+            lineen = data['en'][i]
+
+            # prepare padding
+            pad_seq = ['<eos>', '<pad>', '<pad>', '<pad>', '<pad>', '<pad>', '<pad>', '<pad>', '<pad>','<pad>', '<pad>']
+
+            # apply padding
+            linefr.extend(pad_seq[0:(self.max_len['fr'] - len(linefr))])
+            lineen.extend(pad_seq[0:(self.max_len['en'] - len(lineen))])
+
+            # update data
+            data['fr'][i] = linefr
+            data['en'][i] = lineen
 
         # ---------------------- Laboratoire 2 - Question 2 - Fin de la section à compléter ------------------
-
 
         # Assignation des données du dataset et de la taille du ditcionnaire       
         self.data = data
