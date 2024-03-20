@@ -10,7 +10,7 @@ from torchvision.datasets import VOCSegmentation, VOCDetection
 
 
 class VOCClassificationDataset(VOCDetection):
-    def __init__(self, root, image_set='train', download=True, img_shape=100):
+    def __init__(self, root, image_set='train', download=False, img_shape=100):
         super().__init__(root=root, image_set=image_set, download=download)
         self.img_shape = img_shape
         self.nb_classe = 21  # Nombre de classes dans le PASCAL VOC
@@ -48,8 +48,11 @@ class VOCClassificationDataset(VOCDetection):
         multi_hot = torch.zeros(self.nb_classe, dtype=torch.float)
 
         # ------------------------ Laboratoire 2 - Question 1 - Début de la section à compléter ------------------------
-        for obj in target_metadata["annotation"]["object"]:
-            multi_hot[self.VOC_CLASSES_2_ID[obj["name"]]] = 1
+        objets = target_metadata['annotation']['object']
+        for obj in objets:
+            className = obj['name']
+            classId = self.VOC_CLASSES_2_ID[className]
+            multi_hot[classId] = 1
 
         # ------------------------ Laboratoire 2 - Question 1 - Fin de la section à compléter --------------------------
 

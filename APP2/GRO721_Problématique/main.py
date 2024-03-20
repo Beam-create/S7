@@ -1,4 +1,5 @@
 #! usr/bin/python3
+
 import argparse
 import os
 
@@ -7,12 +8,13 @@ import torch
 import torch.optim as optim
 from torchvision import transforms
 
-from dataset import ConveyorSimulator
+from models.classification_network import AlexNet
+from models.detection_network import AlexNetDetect, detectionLoss
+from models.segmentation_network import Unet, SegmentationLoss
+
 from metrics import AccuracyMetric, MeanAveragePrecisionMetric, SegmentationIntersectionOverUnionMetric
 from visualizer import Visualizer
-
-from models.classification_network import ResNet
-from models.segmentation_network import Unet, SegmentationLoss
+from dataset import ConveyorSimulator
 
 TRAIN_VALIDATION_SPLIT = 0.9
 CLASS_PROBABILITY_THRESHOLD = 0.5
@@ -28,7 +30,7 @@ class ConveyorCnnTrainer():
         use_cuda = args.use_gpu and torch.cuda.is_available()
         self._device = torch.device('cuda' if use_cuda else 'cpu')
         seed = np.random.rand()
-        torch.manual_seed(3221)
+        torch.manual_seed(1)
         self.transform = transforms.Compose([transforms.ToTensor()])
 
         # Generation des 'path'
@@ -47,24 +49,27 @@ class ConveyorCnnTrainer():
 
     def _create_model(self, task):
         if task == 'classification':
-            model = ResNet(img_channels=1, num_classes=3)
+            return AlexNet(1, 3)
+
         elif task == 'detection':
-            # À compléter
-            raise NotImplementedError()
+            return AlexNetDetect()
+
         elif task == 'segmentation':
-            model = Unet(img_channels=1, num_classes=4)
+            return Unet(img_channels=1, num_classes=4)
+        
         else:
             raise ValueError('Not supported task')
-        return model
 
     def _create_criterion(self, task):
         if task == 'classification':
             return torch.nn.BCEWithLogitsLoss()
+
         elif task == 'detection':
-            # À compléter
-            raise NotImplementedError()
+            return detectionLoss()
+
         elif task == 'segmentation':
             return SegmentationLoss()
+
         else:
             raise ValueError('Not supported task')
 
@@ -204,7 +209,7 @@ class ConveyorCnnTrainer():
                                             epochs_train_metrics, epochs_validation_metrics,
                                             train_metric.get_name())
 
-        ans = input('Do you want ot test? (y/n):')
+        ans = input('Do you want to test? (y/n):')
         if ans == 'y':
             self.test()
 
@@ -247,21 +252,44 @@ class ConveyorCnnTrainer():
         :return: La valeur de la fonction de coût pour le lot
         """
 
-        # À compléter
-        optimizer.zero_grad()
-        if task == "classification":
-            output = model(image)
-            metric.accumulate(output, class_labels)
-            loss = criterion(output, class_labels)
+        if task == 'classification':
+            # forward
+            ypred = model(image)
+            loss = criterion(ypred, class_labels)
+            metric.accumulate(ypred, class_labels)
+
+            # backward et optimiser
             loss.backward()
             optimizer.step()
-        elif task == "segmentation":
-            output = model(image)
-            loss = criterion(output, segmentation_target)
+
+            return loss
+
+        elif task == 'detection':
+            # forward
+            ypred = model(image)
+            loss = criterion(ypred, boxes)
+            metric.accumulate(ypred, boxes)
+
+            # backward et optimiser
             loss.backward()
             optimizer.step()
-            metric.accumulate(output, segmentation_target)
-        return loss
+
+            return loss
+
+        elif task == 'segmentation':
+            # forward
+            ypred = model(image)
+            loss = criterion(ypred, segmentation_target)
+            metric.accumulate(ypred, segmentation_target)
+
+            # backward et optimiser
+            loss.backward()
+            optimizer.step()
+
+            return loss
+
+        else:
+            raise ValueError('Not supported task')
 
     def _test_batch(self, task, model, criterion, metric, image, segmentation_target, boxes, class_labels):
         """
@@ -301,15 +329,32 @@ class ConveyorCnnTrainer():
         :return: La valeur de la fonction de coût pour le lot
         """
 
-        if task == "classification":
-            output = model(image)
-            metric.accumulate(output, class_labels)
-            loss = criterion(output, class_labels)
-        elif task == "segmentation":
-            output = model(image)
-            loss = criterion(output, segmentation_target)
-            metric.accumulate(output, segmentation_target)
-        return loss
+        if task == 'classification':
+            # forward
+            ypred = model(image)
+            loss = criterion(ypred, class_labels)
+            metric.accumulate(ypred, class_labels)
+
+            return loss
+
+        elif task == 'detection':
+            # forward
+            ypred = model(image)
+            loss = criterion(ypred, boxes)
+            metric.accumulate(ypred, boxes)
+
+            return loss
+
+        elif task == 'segmentation':
+            # forward
+            ypred = model(image)
+            loss = criterion(ypred, segmentation_target)
+            metric.accumulate(ypred, segmentation_target)
+
+            return loss
+
+        else:
+            raise ValueError('Not supported task')
 
 
 if __name__ == '__main__':

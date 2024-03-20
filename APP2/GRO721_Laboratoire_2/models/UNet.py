@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 
@@ -8,62 +9,62 @@ class UNet(nn.Module):
         self.hidden = None
 
         # Down 1
-        self.conv_1_1 = nn.Conv2d(input_channels, 32, kernel_size=3, padding=1, stride=1)
-        self.relu_1_1 = nn.ReLU(inplace=True)
-        self.conv_1_2 = nn.Conv2d(32, 32, kernel_size=3, padding=1, stride=1)
-        self.relu_1_2 = nn.ReLU(inplace=True)
+        self.conv_1_1 = nn.Conv2d(3, 32, 3, 1, 1)
+        self.relu_1_1 = nn.ReLU()
+        self.conv_1_2 = nn.Conv2d(32, 32, 3, 1, 1)
+        self.relu_1_2 = nn.ReLU()
 
         # Down 2
-        self.maxpool_2 = nn.MaxPool2d(2, stride=2, padding=0)
-        self.conv_2_1 = nn.Conv2d(32, 64, kernel_size=3, padding=1, stride=1)
-        self.relu_2_1 = nn.ReLU(inplace=True)
-        self.conv_2_2 = nn.Conv2d(64, 64, kernel_size=3, padding=1, stride=1)
-        self.relu_2_2 = nn.ReLU(inplace=True)
+        self.maxpool_2 = nn.MaxPool2d(2, 2, 0)
+        self.conv_2_1 = nn.Conv2d(32, 64, 3, 1, 1)
+        self.relu_2_1 = nn.ReLU()
+        self.conv_2_2 = nn.Conv2d(64, 64, 3, 1, 1)
+        self.relu_2_2 = nn.ReLU()
 
         # Down 3
-        self.maxpool_3 = nn.MaxPool2d(2, stride=2, padding=0)
-        self.conv_3_1 = nn.Conv2d(64, 128, kernel_size=3, padding=1, stride=1)
-        self.relu_3_1 = nn.ReLU(inplace=True)
-        self.conv_3_2 = nn.Conv2d(128, 128, kernel_size=3, padding=1, stride=1)
-        self.relu_3_2 = nn.ReLU(inplace=True)
+        self.maxpool_3 = nn.MaxPool2d(2,2,0)
+        self.conv_3_1 = nn.Conv2d(64, 128, 3, 1, 1)
+        self.relu_3_1 = nn.ReLU()
+        self.conv_3_2 = nn.Conv2d(128, 128, 3, 1, 1)
+        self.relu_3_2 = nn.ReLU()
 
         # Down 4
-        self.maxpool_4 = nn.MaxPool2d(2, stride=2, padding=0)
-        self.conv_4_1 = nn.Conv2d(128, 256, kernel_size=3, padding=1, stride=1)
-        self.relu_4_1 = nn.ReLU(inplace=True)
-        self.conv_4_2 = nn.Conv2d(256, 256, kernel_size=3, padding=1, stride=1)
-        self.relu_4_2 = nn.ReLU(inplace=True)
+        self.maxpool_4 = nn.MaxPool2d(2,2,0)
+        self.conv_4_1 = nn.Conv2d(128, 256, 3, 1,1 )
+        self.relu_4_1 = nn.ReLU()
+        self.conv_4_2 = nn.Conv2d(256, 256, 3, 1, 1)
+        self.relu_4_2 = nn.ReLU()
 
         # Down 5
-        self.maxpool_5 = nn.MaxPool2d(2, stride=2, padding=0)
-        self.conv_5_1 = nn.Conv2d(256, 512, kernel_size=3, padding=1, stride=1)
-        self.relu_5_1 = nn.ReLU(inplace=True)
-        self.conv_5_2 = nn.Conv2d(512, 256, kernel_size=3, padding=1, stride=1)
-        self.relu_5_2 = nn.ReLU(inplace=True)
+        self.maxpool_5 = nn.MaxPool2d(2,2,0)
+        self.conv_5_1 = nn.Conv2d(256, 512, 3, 1,1)
+        self.relu_5_1 = nn.ReLU()
+        self.conv_5_2 = nn.Conv2d(512, 512, 3, 1, 1)
+        self.relu_5_2 = nn.ReLU()
 
         # Up 6
-        self.upsample_6 = nn.ConvTranspose2d()
-        self.conv_6_1 = None
-        self.relu_6_1 = None
-        self.conv_6_2 = None
-        self.relu_6_2 = None
+        self.upsample_6 = nn.ConvTranspose2d(256,256,2,2,0)
+        self.conv_6_1 = nn.Conv2d(512,256, 3, 1, 1)
+        self.relu_6_1 = nn.ReLU()
+        self.conv_6_2 = nn.Conv2d(256, 128, 3, 1, 1)
+        self.relu_6_2 = nn.ReLU()
 
         # Up 7
-        self.upsample_7 = None
-        self.conv_7_1 = None
-        self.relu_7_1 = None
-        self.conv_7_2 = None
-        self.relu_7_2 = None
+        self.upsample_7 = nn.ConvTranspose2d(128, 128, 2, 2, 0)
+        self.conv_7_1 = nn.Conv2d(256,128, 3, 1, 1)
+        self.relu_7_1 = nn.ReLU()
+        self.conv_7_2 = nn.Conv2d(128, 64, 3, 1, 1)
+        self.relu_7_2 = nn.ReLU()
 
         # Up 8
-        self.upsample_8 = None
-        self.conv_8_1 = None
-        self.relu_8_1 = None
-        self.conv_8_2 = None
-        self.relu_8_2 = None
+        self.upsample_8 = nn.ConvTranspose2d(64,64,2, 2, 0)
+        self.conv_8_1 = nn.Conv2d(128, 64, 3, 1, 1)
+        self.relu_8_1 = nn.ReLU()
+        self.conv_8_2 = nn.Conv2d(64, 32, 3, 1, 1)
+        self.relu_8_2 = nn.ReLU()
 
         # Up 9
-        self.upsample_9 = None
+        self.upsample_9 = nn.ConvTranspose2d(32,32,2,2,0)
         self.conv_9_1 = None
         self.relu_9_1 = None
         self.conv_9_2 = None
@@ -74,7 +75,7 @@ class UNet(nn.Module):
     def forward(self, x):
         # Down 1
         # To do
-
+        torch.concat()
         # Down 2
         # To do
 

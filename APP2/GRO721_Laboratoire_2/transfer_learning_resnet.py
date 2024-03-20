@@ -5,7 +5,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torchvision.models as md
+import torchvision.models
 
 # Module du dataset
 from voc_classification_dataset import VOCClassificationDataset
@@ -74,13 +74,19 @@ if __name__ == '__main__':
 
     # ------------------------ Laboratoire 2 - Question 2 - Début de la section à compléter ----------------------------
     # Chargement du modèle
-    # model = torch.load(weights_path, weights_only=False)
-    base_model = md.resnet18(weights=md.ResNet18_Weights.IMAGENET1K_V1)
-    for param in base_model.parameters():
+
+    #model = torch.load(weights_path, weights_only=False)
+
+    weights = torchvision.models.ResNet18_Weights.IMAGENET1K_V1
+    resnet = torchvision.models.resnet18(weights=weights, progress=True, )
+    for param in resnet.parameters():
         param.requires_grad = False
-    for param in base_model.fc.parameters():
+    for param in resnet.fc.parameters():
         param.requires_grad = True
-    model = nn.Sequential(base_model, nn.ReLU(), nn.Linear(1000, num_classes), nn.Sigmoid())
+    relu = torch.nn.ReLU()
+    linear = torch.nn.Linear(1000, num_classes)
+    sig = torch.nn.Sigmoid()
+    model = torch.nn.Sequential(resnet, relu, linear, sig)
 
     # ------------------------ Laboratoire 2 - Question 2 - Fin de la section à compléter ------------------------------
 
