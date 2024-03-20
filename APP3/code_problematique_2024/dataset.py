@@ -18,23 +18,70 @@ class HandwrittenWords(Dataset):
         with open(filename, 'rb') as fp:
             self.data = pickle.load(fp)
 
+        self.symb2int = {start_symbol:0, stop_symbol:1, pad_symbol:2}
+        cpt_symb = 3
+
         # Extraction des symboles
-        # À compléter
-        
+        for i, data in enumerate(self.data):
+            word = data[0]
+            car_seq = []
+            for symb in word:
+                if symb not in self.symb2int:
+                    self.symb2int[symb] = cpt_symb
+                    cpt_symb += 1
+                car_seq.extend(symb)
+            data[0] = car_seq
+
         # Ajout du padding aux séquences
-        # À compléter
+        self.max_len_word = 0
+        self.max_len_seq = 0
+
+        # find the max length
+        for i, data in enumerate(self.data):
+            word = data[0]
+            seq = data[1]
+
+            # Update word max length
+            if len(word) > self.max_len_word:
+                self.max_len_word = len(word)
+
+            # Update sequence max length
+            if seq.shape[1] > self.max_len_seq:
+                self.max_len_seq = seq.shape[1]
+
+        self.max_len_word += 1
+        self.max_len_seq += 1
+
+        pad_word = ['<eos>', '<pad>', '<pad>', '<pad>', '<pad>', '<pad>', '<pad>']
+
+        # Pad to length
+        for i, data in enumerate(self.data):
+            word = data[0]
+            seq = data[1]
+
+            # apply padding to word
+            word.extend((pad_word[0:(self.max_len_word - len(word))]))
+            data[0] = word
+
+            # apply padding to points
         
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
-        # À compléter
-        return None, None
+        item = self.data[idx]
+        inputTensor = torch.tensor(item[1])
+        targetTensor = item[0]
+        return inputTensor, targetTensor
 
     def visualisation(self, idx):
-        # Visualisation des échantillons
-        # À compléter (optionel)
-        pass
+        input_sequence, target_sequence = self[idx]
+        input_sequence = input_sequence.numpy()
+
+        plt.plot(input_sequence[0], input_sequence[1], label='input sequence')
+        plt.title('Visualization of sample ' + str(idx) + ' : ' + str(target_sequence) )
+        plt.legend()
+        plt.show()
         
 
 if __name__ == "__main__":
