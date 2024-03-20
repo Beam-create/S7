@@ -28,7 +28,7 @@ if __name__ == '__main__':
     n_layers = 2               # Nombre de de couches
 
     n_workers = 0               # Nombre de fils pour charger les donnees
-    seed = None                 # Pour repetabilite
+    seed = 123                 # Pour repetabilite
     # ------------ Fin des paramètres et hyperparamètres ------------#
 
     # Initialisation des variables
@@ -51,7 +51,7 @@ if __name__ == '__main__':
     print('\n')
 
     # Instanciation du model
-    model = Seq2seq(n_hidden=n_hidden, \
+    model = Seq2seq_attn(n_hidden=n_hidden, \
         n_layers=n_layers, device=device, symb2int=dataset.symb2int, \
         int2symb=dataset.int2symb, dict_size=dataset.dict_size, max_len=dataset.max_len)
 

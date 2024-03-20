@@ -74,15 +74,27 @@ class Fr_En(Dataset):
         # ---------------------- Laboratoire 2 - Question 2 - Début de la section à compléter ------------------
         self.max_len['fr'] = 0
         self.max_len['en'] = 0
-        num_samples = len(data['fr'])
-        for i in range(num_samples):
+        for i in range(n_samp):
             line_fr = data['fr'][i]
             line_en = data['en'][i]
-            if len(line) > self.max_len['fr']:
-                self.max_len['fr'] = len(line)
-        for line in data['en']:
-            if len(line) > self.max_len['en']:
-                self.max_len['en'] = len(line)
+            if len(line_fr) > self.max_len['fr']:
+                self.max_len['fr'] = len(line_fr)
+            if len(line_en) > self.max_len['en']:
+                self.max_len['en'] = len(line_en)
+        self.max_len['fr'] += 1
+        self.max_len['en'] += 1
+        print(self.max_len['en'], self.max_len['fr'])
+        pad_sequence = ['<eos>']
+        [pad_sequence.append('<pad>') for i in range(1, max(self.max_len['en'], self.max_len['fr']))]
+        print(pad_sequence)
+        # print(pad_sequence)
+        for i in range(n_samp):
+            line_fr = data['fr'][i]
+            line_en = data['en'][i]
+            line_lgt_fr = len(line_fr)
+            line_lgt_en = len(line_en)
+            data['fr'][i] = data['fr'][i] + pad_sequence[0:self.max_len['fr']-line_lgt_fr]
+            data['en'][i] = data['en'][i] + pad_sequence[0:self.max_len['en']-line_lgt_en]
 
         # ---------------------- Laboratoire 2 - Question 2 - Fin de la section à compléter ------------------
 
