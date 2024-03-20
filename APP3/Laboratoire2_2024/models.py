@@ -32,12 +32,9 @@ class Seq2seq(nn.Module):
         
     def encoder(self, x):
         # Encodeur
-
         # ---------------------- Laboratoire 2 - Question 3 - Début de la section à compléter -----------------
-
-        out = None
-        hidden = None
-        
+        y = self.fr_embedding(x)
+        out, hidden = self.encoder_layer(y)
         # ---------------------- Laboratoire 2 - Question 3 - Fin de la section à compléter -----------------
 
         return out, hidden
@@ -54,8 +51,12 @@ class Seq2seq(nn.Module):
         for i in range(max_len):
 
             # ---------------------- Laboratoire 2 - Question 3 - Début de la section à compléter -----------------   
-            
-            vec_out = vec_out
+            vec_emb = self.en_embedding(vec_in)
+            vec_rnn, hidden = self.decoder_layer(vec_emb, hidden)
+            vec_fc = self.fc(vec_rnn)
+            idx = torch.argmax(vec_fc, dim=-1)
+            vec_out[:, i, :] = vec_fc.squeeze(1)
+            vec_in = idx
 
             # ---------------------- Laboratoire 2 - Question 3 - Début de la section à compléter -----------------
 
@@ -99,10 +100,8 @@ class Seq2seq_attn(nn.Module):
         #Encodeur
 
         # ---------------------- Laboratoire 2 - Question 4 - Début de la section à compléter -----------------
-        
-        out = None
-        hidden = None
-        
+        y = self.fr_embedding(x)
+        out, hidden = self.encoder_layer(y)
         # ---------------------- Laboratoire 2 - Question 4 - Début de la section à compléter -----------------
 
         return out, hidden
@@ -116,10 +115,14 @@ class Seq2seq_attn(nn.Module):
         # Attention
 
         # ---------------------- Laboratoire 2 - Question 4 - Début de la section à compléter -----------------
-        
-       
-        attention_weights = None
-        attention_output = None
+        N = values.shape[0]
+        He = values.shape[-1]
+        attention_similarity = torch.bmm(values, query.view(N,He,1))
+        attention_similarity = attention_similarity.squeeze(-1)
+        attention_weights = torch.softmax(attention_similarity, dim=1)
+        attention_weights = attention_weights.unsqueeze(dim=1)
+
+        attention_output = torch.bmm(attention_weights, values)
         
 
         # ---------------------- Laboratoire 2 - Question 4 - Début de la section à compléter -----------------
@@ -140,7 +143,15 @@ class Seq2seq_attn(nn.Module):
         for i in range(max_len):
 
             # ---------------------- Laboratoire 2 - Question 4 - Début de la section à compléter -----------------
-            
+            vec_emb = self.en_embedding(vec_in)
+            vec_rnn, hidden = self.decoder_layer(vec_emb, hidden)
+            attention_output, attention_weights = self.attentionModule(vec_rnn, encoder_outs)
+            concat = torch.cat((vec_rnn, attention_output), dim=-1)
+            fc1 = self.att_combine(concat)
+            fc2 = self.fc(fc1)
+            idx = torch.argmax(fc2, dim=-1)
+            vec_out[:, i, :] = fc2.squeeze(1)
+            vec_in = idx
             vec_out = vec_out
 
             # ---------------------- Laboratoire 2 - Question 4 - Début de la section à compléter -----------------
