@@ -32,6 +32,11 @@ class HandwrittenWords(Dataset):
                 car_seq.extend(symb)
             data[0] = car_seq
 
+        # Dict int2symb
+        self.int2symb = dict()
+        self.int2symb = {v:k for k, v in self.symb2int.items()}
+        self.dict_size = len(self.int2symb)
+
         # Ajout du padding aux séquences
         self.max_len_word = 0
         self.max_len_seq = 0
@@ -52,7 +57,12 @@ class HandwrittenWords(Dataset):
         self.max_len_word += 1
         self.max_len_seq += 1
 
-        pad_word = ['<eos>', '<pad>', '<pad>', '<pad>', '<pad>', '<pad>', '<pad>']
+        pad_word = ['<eos>']
+        [pad_word.append('<pad>') for i in range(1, self.max_len_word)]
+        pad_sequence = np.full((2, self.max_len_seq), -2)
+        pad_sequence[0][0] = -1
+        pad_sequence[1][0] = -1
+        # print(len(pad_sequence))
 
         # Pad to length
         for i, data in enumerate(self.data):
@@ -61,18 +71,22 @@ class HandwrittenWords(Dataset):
 
             # apply padding to word
             word.extend((pad_word[0:(self.max_len_word - len(word))]))
-            data[0] = word
+            self.data[i][0] = word
 
             # apply padding to points
-        
+            seq_min_val = -1*(np.floor(seq.min()))
+            # offset all vals in seq of seq_min_val
+            positive_seq = seq + seq_min_val
+            self.data[i][1] = np.concatenate((positive_seq, pad_sequence[:, :(self.max_len_seq - len(seq[1]))]), axis=1)
+
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
         item = self.data[idx]
-        inputTensor = torch.tensor(item[1])
-        targetTensor = item[0]
-        return inputTensor, targetTensor
+        input_tensor = torch.tensor(item[1])
+        target_tensor = item[0]
+        return input_tensor, target_tensor
 
     def visualisation(self, idx):
         input_sequence, target_sequence = self[idx]
