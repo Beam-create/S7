@@ -32,6 +32,11 @@ class HandwrittenWords(Dataset):
                 car_seq.extend(symb)
             data[0] = car_seq
 
+        self.int2symb = dict()
+        self.int2symb = {v: k for k, v in self.symb2int.items()}
+
+        self.dict_size = len(self.int2symb)
+
         # Ajout du padding aux séquences
         self.max_len_word = 0
         self.max_len_seq = 0
@@ -61,25 +66,41 @@ class HandwrittenWords(Dataset):
 
             # apply padding to word
             word.extend((pad_word[0:(self.max_len_word - len(word))]))
-            data[0] = word
+            self.data[i][0] = word
 
-            # apply padding to points
-        
+            # shift points to positive
+            seq_x = seq[0]
+            seq_y = seq[1]
+            if seq.min() < 0:
+                offset = abs(np.floor(seq.min()))
+                seq_x = [x + offset for x in seq_x]
+                seq_y = [x + offset for x in seq_y]
+
+            # Create padding np array
+            pad_seq = np.zeros(self.max_len_seq - len(seq_x))
+            #pad_seq[0] = -1
+            seq_x = np.append(seq_x, pad_seq)
+            seq_y = np.append(seq_y, pad_seq)
+
+            self.data[i][1] = np.stack((seq_x, seq_y), axis=0)
+
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
         item = self.data[idx]
         inputTensor = torch.tensor(item[1])
-        targetTensor = item[0]
+        targetList = item[0]
+        targetList = [self.symb2int[i] for i in targetList]
+        targetTensor = torch.tensor(targetList)
         return inputTensor, targetTensor
 
     def visualisation(self, idx):
         input_sequence, target_sequence = self[idx]
         input_sequence = input_sequence.numpy()
-
+        word = [self.int2symb[i] for i in target_sequence.tolist()]
         plt.plot(input_sequence[0], input_sequence[1], label='input sequence')
-        plt.title('Visualization of sample ' + str(idx) + ' : ' + str(target_sequence) )
+        plt.title('Visualization of sample ' + str(idx) + ' : ' + str(word) )
         plt.legend()
         plt.show()
         
