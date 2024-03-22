@@ -80,8 +80,8 @@ class trajectory2seq_attn(nn.Module):
         # Definition des couches
         # Couches pour rnn
         self.word_embedding = nn.Embedding(self.dict_size, self.hidden_dim)
-        self.encoder_rnn = nn.RNN(maxlen['in'], hidden_dim, n_layers, batch_first=True)
-        self.decoder_rnn = nn.RNN(hidden_dim, hidden_dim, n_layers, batch_first=True)
+        self.encoder_rnn = nn.GRU(2, hidden_dim, n_layers, batch_first=True)
+        self.decoder_rnn = nn.GRU(hidden_dim, hidden_dim, n_layers, batch_first=True)
 
         # Couches pour attention
         self.att_combine = nn.Linear(2 * hidden_dim, hidden_dim)
@@ -93,6 +93,8 @@ class trajectory2seq_attn(nn.Module):
         self.to(device)
 
     def encoder(self, x):
+
+        x = x.permute(0, 2, 1)
         y, h = self.encoder_rnn(x.type(torch.float32))
 
         return y, h
@@ -105,18 +107,12 @@ class trajectory2seq_attn(nn.Module):
 
         # Attention
 
-        # ---------------------- Laboratoire 2 - Question 4 - Début de la section à compléter -----------------
-
-        N = values.shape[0]
-        He = values.shape[-1]
-        vec_dot = torch.bmm(values, query.view(N, He, 1))
+        vec_dot = torch.bmm(values, query.permute(0, 2, 1))
         vec_dot = vec_dot.squeeze(-1)
         attention_weights = torch.softmax(vec_dot, 1)
 
         attention_weights = attention_weights.unsqueeze(1)
         attention_output = torch.bmm(attention_weights, values)
-
-        # ---------------------- Laboratoire 2 - Question 4 - Début de la section à compléter -----------------
 
         return attention_output, attention_weights
 
@@ -126,7 +122,7 @@ class trajectory2seq_attn(nn.Module):
         batch_size = hidden.shape[1]  # Taille de la batch
         vec_in = torch.zeros((batch_size, 1)).to(self.device).long()  # Vecteur d'entrée pour décodage
         vec_out = torch.zeros((batch_size, max_len, self.dict_size)).to(self.device)  # Vecteur de sortie du décodage
-        att_w = torch.zeros((batch_size, max_len, self.dict_size)).to(self.device)  # Poids d'attention
+        att_w = torch.zeros((batch_size, max_len, self.maxlen['in'] )).to(self.device)  # Poids d'attention
 
         # Boucle pour tous les symboles de sortie
         for i in range(max_len):
@@ -134,7 +130,7 @@ class trajectory2seq_attn(nn.Module):
             vec_emb = self.word_embedding(vec_in)
             vec_rnn, hidden = self.decoder_rnn(vec_emb, hidden)
 
-            att_out, att_w = self.attentionModule(vec_rnn, encoder_outs)
+            att_out, att_weight = self.attentionModule(vec_rnn, encoder_outs)
             vec_concat = torch.cat((vec_rnn, att_out), dim=2)
             vec_fully = self.att_combine(vec_concat)
             vec_fully = self.fc(vec_fully)
@@ -144,13 +140,14 @@ class trajectory2seq_attn(nn.Module):
 
             vec_in = idx
             vec_out[:, i, :] = vec_fully.squeeze(1)
+            att_w[:, i, :] = att_weight.squeeze(1)
 
         return vec_out, hidden, att_w
 
     def forward(self, x):
         out, h = self.encoder(x)
         out, hidden, attn = self.decoder(out, h)
-        return out, hidden
+        return out, hidden, attn
 
 
 class trajectory2seq_bi(nn.Module):

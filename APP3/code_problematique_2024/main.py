@@ -14,21 +14,20 @@ if __name__ == '__main__':
 
     # ---------------- Paramètres et hyperparamètres ----------------#
     force_cpu = False           # Forcer a utiliser le cpu?
-    trainning = True           # Entrainement?
+    trainning = True          # Entrainement?
     test = True                # Test?
+    display_attention = True
     learning_curves = True     # Affichage des courbes d'entrainement?
     gen_test_images = True     # Génération images test?
     seed = 1                # Pour répétabilité
     n_workers = 0           # Nombre de threads pour chargement des données (mettre à 0 sur Windows)
 
-    visualise = True
+    batch_size = 80
+    n_epochs = 200
+    lr = 0.014
 
-    batch_size = 64
-    n_epochs = 50
-    lr = 0.005
-
-    n_hidden = 9
-    n_layers = 1
+    n_hidden = 15
+    n_layers = 3
     train_val_split = 0.7
 
     # ---------------- Fin Paramètres et hyperparamètres ----------------#
@@ -42,7 +41,7 @@ if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() and not force_cpu else "cpu")
 
     # Instanciation de l'ensemble de données
-    dataset = HandwrittenWords('data_trainval.p')
+    dataset = HandwrittenWords('data_trainval.p', device)
     
     # Séparation de l'ensemble de données (entraînement et validation)
     n_train_samp = int(len(dataset) * train_val_split)
@@ -99,12 +98,15 @@ if __name__ == '__main__':
                 optimizer.zero_grad()
 
                 #  Train Forward
-                output, hidden = model(seq)
-                loss = criterion(output.view((-1, model.dict_size)), target.view(-1))
+                output, hidden, attn = model(seq)
+
+                loss = criterion(output.view((-1, dataset.dict_size)), target.view(-1))
                 running_loss_train += loss.item()
 
                 # Train Backward
                 loss.backward()
+
+                torch.nn.utils.clip_grad_norm(model.parameters(), 1)
                 optimizer.step()
 
                 # calcul de la distance d'édition
@@ -131,7 +133,7 @@ if __name__ == '__main__':
                 seq, target = data
 
                 # Forward
-                output, hidden = model(seq)
+                output, hidden, attn = model(seq)
                 loss = criterion(output.view((-1, model.dict_size)), target.view(-1))
                 running_loss_val += loss.item()
 
@@ -187,40 +189,64 @@ if __name__ == '__main__':
             plt.show()
             plt.close('all')
 
-        if visualise:
-            model.eval()
-            with torch.no_grad():
-                for i in range(3):
-                    # Find a random data in dataset
-                    idx = np.random.randint(0, len(dataset))
-
-                    input, target = dataset[idx]
-
-                    # Forward, loss and distance
-                    output, hidden = model(input.unsqueeze(0))
-                    loss = criterion(output.view((-1, model.dict_size)), target.view(-1))
-                    a = target.tolist()
-                    b = torch.argmax(output, dim=-1).tolist()
-                    Ma = a.index(1)  # longueur mot a
-                    Mb = b.index(1) if 1 in b else len(b)  # longueur mot b
-                    epoch_dist_train = edit_distance(a[:Ma], b[:Mb])
-
-                    # Show results
-                    output = output.squeeze(0)
-                    word_pred = [dataset.int2symb[j] for j in torch.argmax(output, dim=-1).tolist()]
-                    word_target = [dataset.int2symb[j] for j in target.tolist()]
-                    print("Index        :", idx)
-                    print("Prediction   :", word_pred)
-                    print("target       :", word_target)
-                    print("Loss         :", loss.item())
-                    print("Distance     :", epoch_dist_train)
-                    print("")
-                    dataset.visualisation(idx)
-
-
-
     if test:
         with torch.no_grad():
+            model = torch.load('model.pt')
+            criterion = nn.CrossEntropyLoss(ignore_index=2)
+
+            for i in range(5):
+                # Find a random data in dataset
+                idx = np.random.randint(0, len(dataset))
+
+                input, target = dataset[idx]
+
+                # Forward, loss and distance
+                output, hidden, attn = model(input.unsqueeze(0))
+                output = output.squeeze(0)
+                loss = criterion(output.view((-1, model.dict_size)), target.view(-1))
+                a = target.cpu().tolist()
+                b = torch.argmax(output, dim=-1).cpu().tolist()
+                Ma = a.index(1)  # longueur mot a
+                Mb = b.index(1) if 1 in b else len(b)  # longueur mot b
+                epoch_dist_train = edit_distance(a[:Ma], b[:Mb])
+
+                # Show results
+                output = output.squeeze(0)
+                word_pred = [dataset.int2symb[j] for j in torch.argmax(output, dim=-1).tolist()]
+                word_target = [dataset.int2symb[j] for j in target.tolist()]
+                print("Index        :", idx)
+                print("Prediction   :", word_pred)
+                print("target       :", word_target)
+                print("Loss         :", loss.item())
+                print("Distance     :", epoch_dist_train)
+                print("")
+                if display_attention:
+                    # For each letter of the output, display the attention of the model on the input trajectory
+                    # The input trajectory is the same for each letter of the output, but where the attention is the highest, darker the points and the line connecting them are
+                    #  The attention weights are a tensor of the length of the input trajectory
+                    # Attention weights are a tensor of shape (1, len(input), len(output)) -> (1, len(output), len(input))
+                    #attn = attn.permute(0, 2, 1)
+
+                    # Choose the size of the figure depending on the number of letters in the output
+                    plt.figure(figsize=(1, 1 * len(output)))
+                    # Create a subplot for each letter of the output
+                    word = [dataset.int2symb[i] for i in b]
+                    for i in range(len(output)):
+                        plt.subplot(len(output), 1, i + 1)
+                        # Get the attention weights for the i-th letter
+                        colors = attn[:,i,:].detach().cpu().numpy()
+                        colors = 0.2 + 0.8*(1 - colors)
+                        # Get the trajectory
+                        traj = input.detach().cpu().numpy()
+                        # Plot the trajectory
+                        # plt.plot(traj[0], traj[1], 'b', linewidth=0.5)
+                        # Plot the attention weights on the trajectory (darker points and lines where the attention is higher)
+                        plt.scatter(traj[0], traj[1], c=colors, cmap='gray')
+
+                        plt.title(word[i])
+
+                    plt.show()
+                #dataset.visualisation(idx)
             # Évaluation
             # À compléter
 

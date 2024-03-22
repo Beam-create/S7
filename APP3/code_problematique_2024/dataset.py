@@ -8,7 +8,9 @@ import pickle
 class HandwrittenWords(Dataset):
     """Ensemble de donnees de mots ecrits a la main."""
 
-    def __init__(self, filename):
+    def __init__(self, filename, device='cuda'):
+        self.device = device
+
         # Lecture du text
         self.pad_symbol     = pad_symbol = '<pad>'
         self.start_symbol   = start_symbol = '<sos>'
@@ -68,19 +70,15 @@ class HandwrittenWords(Dataset):
             word.extend((pad_word[0:(self.max_len_word - len(word))]))
             self.data[i][0] = word
 
-            # shift points to positive
+            # Apply padding to input
             seq_x = seq[0]
             seq_y = seq[1]
-            if seq.min() < 0:
-                offset = abs(np.floor(seq.min()))
-                seq_x = [x + offset for x in seq_x]
-                seq_y = [x + offset for x in seq_y]
 
             # Create padding np array
-            pad_seq = np.zeros(self.max_len_seq - len(seq_x))
-            #pad_seq[0] = -1
-            seq_x = np.append(seq_x, pad_seq)
-            seq_y = np.append(seq_y, pad_seq)
+            pad_seq_y = np.ones(self.max_len_seq - len(seq_y)) * seq_y[-1]
+            pad_seq_x = np.ones(self.max_len_seq - len(seq_x)) * seq_x[-1]
+            seq_x = np.append(seq_x, pad_seq_x)
+            seq_y = np.append(seq_y, pad_seq_y)
 
             self.data[i][1] = np.stack((seq_x, seq_y), axis=0)
 
@@ -89,16 +87,16 @@ class HandwrittenWords(Dataset):
 
     def __getitem__(self, idx):
         item = self.data[idx]
-        inputTensor = torch.tensor(item[1])
+        inputTensor = torch.tensor(item[1]).to(self.device)
         targetList = item[0]
         targetList = [self.symb2int[i] for i in targetList]
-        targetTensor = torch.tensor(targetList)
+        targetTensor = torch.tensor(targetList).to(self.device)
         return inputTensor, targetTensor
 
     def visualisation(self, idx):
         input_sequence, target_sequence = self[idx]
-        input_sequence = input_sequence.numpy()
-        word = [self.int2symb[i] for i in target_sequence.tolist()]
+        input_sequence = input_sequence.cpu().numpy()
+        word = [self.int2symb[i] for i in target_sequence.cpu().tolist()]
         plt.plot(input_sequence[0], input_sequence[1], label='input sequence')
         plt.title('Visualization of sample ' + str(idx) + ' : ' + str(word) )
         plt.legend()
@@ -108,5 +106,5 @@ class HandwrittenWords(Dataset):
 if __name__ == "__main__":
     # Code de test pour aider à compléter le dataset
     a = HandwrittenWords('data_trainval.p')
-    for i in range(10):
+    for i in range(3):
         a.visualisation(np.random.randint(0, len(a)))
