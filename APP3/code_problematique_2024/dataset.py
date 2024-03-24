@@ -86,6 +86,8 @@ class HandwrittenWords(Dataset):
         item = self.data[idx]
         input_tensor = torch.tensor(item[1])
         target_tensor = item[0]
+        target_tensor = [self.symb2int[i] for i in target_tensor]
+        target_tensor = torch.tensor(target_tensor)
         return input_tensor, target_tensor
 
     def visualisation(self, idx):

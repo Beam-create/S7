@@ -18,11 +18,11 @@ if __name__ == '__main__':
     learning_curves = True     # Affichage des courbes d'entrainement?
     gen_test_images = True     # Génération images test?
     seed = 3221                # Pour répétabilité
-    n_workers = 2           # Nombre de threads pour chargement des données (mettre à 0 sur Windows)
+    n_workers = 0           # Nombre de threads pour chargement des données (mettre à 0 sur Windows)
 
     # À compléter
-    batch_size = 32
-    lr = 0.01
+    batch_size = 64
+    lr = 0.005
     n_epochs = 50
 
     n_hidden = 5
@@ -71,7 +71,8 @@ if __name__ == '__main__':
         if learning_curves:
             val_loss = [] # Historique des couts
             train_loss = [] # Historique des couts
-            fig, ax = plt.subplots(1) # Init figure
+            dist_metric = []
+            fig, (ax1, ax2) = plt.subplots(1,2) # Init figure
 
         # Fonction de coût et optimizateur
         criterion = nn.CrossEntropyLoss(ignore_index=2)
@@ -85,11 +86,11 @@ if __name__ == '__main__':
             model.train()
             for batch_idx, data in enumerate(train_loader):
                 input_seq, target_seq = data
-                input_seq = input_seq.to(device).float()
+                input_seq, target_seq = input_seq.to(device), target_seq.to(device)
                 optimizer.zero_grad()
                 # Forward
                 output, hidden, attn = model(input_seq)
-                loss = criterion(output.view(-1, model.dict_size['trad']), target_seq.view(-1))
+                loss = criterion(output.view(-1, model.dict_size), target_seq.view(-1))
                 running_loss_train += loss.item()
 
                 # Backward
@@ -103,7 +104,7 @@ if __name__ == '__main__':
 
                 # calcul distance Levenshtein
                 output_list = torch.argmax(output, dim=-1).detach().cpu().tolist()
-                target_seq_list = target_seq.cpu().tolist()
+                target_seq_list = target_seq.to(device).tolist()
                 M = len(output_list)
                 for i in range(batch_size):
                     a = target_seq_list[i]
@@ -117,10 +118,10 @@ if __name__ == '__main__':
             model.eval()
             for batch_idx, data in enumerate(val_loader):
                 input_seq, target_seq = data
-                input_seq, target_seq = input_seq.to(device).long(), target_seq.to(device).long()
+                input_seq, target_seq = input_seq.to(device), target_seq.to(device)
 
                 output, hidden, attn = model(input_seq)
-                loss = criterion(output.view(-1, model.maxlen['trad']), target_seq.view(-1))
+                loss = criterion(output.view(-1, model.dict_size), target_seq.view(-1))
                 running_loss_val += loss.item()
             print('\nValidation - Average loss: {:.4f}'.format(running_loss_val / len(val_loader)))
             print('')
@@ -135,10 +136,13 @@ if __name__ == '__main__':
             if learning_curves:
                 train_loss.append(running_loss_train/len(train_loader))
                 val_loss.append(running_loss_val/len(val_loader))
-                ax.cla()
-                ax.plot(train_loss, label='training loss')
-                ax.plot(val_loss, label='validation loss')
-                ax.legend()
+                dist_metric.append(dist/len(train_loader))
+                ax1.cla()
+                ax2.cla()
+                ax1.plot(train_loss, label='training loss')
+                ax1.plot(val_loss, label='validation loss')
+                ax1.legend()
+                ax2.plot(dist_metric, label='edit distance')
                 plt.draw()
                 plt.pause(0.01)
         if learning_curves:
