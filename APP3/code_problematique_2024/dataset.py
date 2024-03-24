@@ -86,14 +86,16 @@ class HandwrittenWords(Dataset):
         item = self.data[idx]
         input_tensor = torch.tensor(item[1])
         target_tensor = item[0]
+        target_tensor = [self.symb2int[i] for i in target_tensor]
+        target_tensor = torch.tensor(target_tensor)
         return input_tensor, target_tensor
 
     def visualisation(self, idx):
         input_sequence, target_sequence = self[idx]
         input_sequence = input_sequence.numpy()
-
+        word = [self.int2symb[i] for i in target_sequence.tolist()]
         plt.plot(input_sequence[0], input_sequence[1], label='input sequence')
-        plt.title('Visualization of sample ' + str(idx) + ' : ' + str(target_sequence) )
+        plt.title('Visualization of sample ' + str(idx) + ' : ' + str(word) )
         plt.legend()
         plt.show()
         

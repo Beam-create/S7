@@ -30,7 +30,6 @@ if __name__ == '__main__':
     n_workers = 0               # Nombre de fils pour charger les donnees
     seed = 123                 # Pour repetabilite
     # ------------ Fin des paramètres et hyperparamètres ------------#
-
     # Initialisation des variables
     if seed is not None:
         torch.manual_seed(seed)
