@@ -14,7 +14,7 @@ if __name__ == '__main__':
 
     # ---------------- Paramètres et hyperparamètres ----------------#
     force_cpu = False           # Forcer a utiliser le cpu?
-    trainning = True          # Entrainement?
+    trainning = False          # Entrainement?
     test = True                # Test?
     display_attention = False
     learning_curves = True     # Affichage des courbes d'entrainement?
@@ -23,7 +23,7 @@ if __name__ == '__main__':
     n_workers = 0           # Nombre de threads pour chargement des données (mettre à 0 sur Windows)
 
     batch_size = 64
-    n_epochs = 50
+    n_epochs = 150
     lr = 0.014
 
     n_hidden = 10
@@ -67,6 +67,8 @@ if __name__ == '__main__':
 
     # Initialisation des variables
     best_val_loss = np.inf # pour sauvegarder le meilleur model
+    pred_val_list = []
+    true_val_list = []
 
     if trainning:
 
@@ -123,7 +125,7 @@ if __name__ == '__main__':
             print('Train - Epoch: {}/{} [{}/{} ({:.0f}%)] Average Loss: {:.6f} Average Edit Distance: {:.6f}'.format(
                     epoch, n_epochs, batch_size, len(dataload_train.dataset),
                     100. *  batch_size / len(dataload_train.dataset), running_loss_train / (batch_idx + 1),
-                    epoch_dist_train/len(dataload_train)), end='\r')
+                    epoch_dist_train/ len(dataload_train)), end='\r')
             print("")
 
             # Validation
@@ -137,6 +139,8 @@ if __name__ == '__main__':
                 loss = criterion(output.view((-1, model.dict_size)), target.view(-1))
                 running_loss_val += loss.item()
 
+
+
                 # calcul de la distance d'édition
                 output_list = torch.argmax(output, dim=-1).detach().cpu().tolist()
                 target_seq_list = target.cpu().tolist()
@@ -146,13 +150,13 @@ if __name__ == '__main__':
                     b = output_list[i]
                     Ma = a.index(1)  # longueur mot a
                     Mb = b.index(1) if 1 in b else len(b)  # longueur mot b
-                    epoch_dist_val += edit_distance(a[:Ma], b[:Mb]) / batch_size
+                    epoch_dist_val += edit_distance(a[:Ma], b[:Mb]) / M
 
             print('Valid - Epoch: {}/{} [{}/{} ({:.0f}%)] Average Loss: {:.6f} Average Edit Distance: {:.6f}'.format(
                 epoch, n_epochs, batch_size, len(dataload_val.dataset),
                                  100. * batch_size / len(dataload_val.dataset),
                                  running_loss_val / (batch_idx + 1),
-                                 epoch_dist_val / len(dataload_val)), end='\r')
+                                 epoch_dist_val /  len(dataload_val)), end='\r')
             print('\n')
 
             # Ajouter les loss aux listes
@@ -194,7 +198,10 @@ if __name__ == '__main__':
             model = torch.load('model.pt')
             criterion = nn.CrossEntropyLoss(ignore_index=2)
 
-            for i in range(5):
+            true_val_list = []
+            pred_val_list = []
+
+            for i in range(50):
                 # Find a random data in dataset
                 idx = np.random.randint(0, len(dataset))
 
@@ -204,11 +211,17 @@ if __name__ == '__main__':
                 output, hidden, attn = model(input.unsqueeze(0))
                 output = output.squeeze(0)
                 loss = criterion(output.view((-1, model.dict_size)), target.view(-1))
+
+                # Compute distance
                 a = target.cpu().tolist()
                 b = torch.argmax(output, dim=-1).cpu().tolist()
                 Ma = a.index(1)  # longueur mot a
                 Mb = b.index(1) if 1 in b else len(b)  # longueur mot b
                 epoch_dist_train = edit_distance(a[:Ma], b[:Mb])
+
+                # Add output and target to confusion matrix list
+                pred_val_list.append(b)
+                true_val_list.append(a)
 
                 # Show results
                 output = output.squeeze(0)
@@ -260,6 +273,17 @@ if __name__ == '__main__':
             # À compléter
 
             # Affichage de la matrice de confusion
-            # À compléter
+            matrix = confusion_matrix(true_val_list, pred_val_list, dataset.int2symb, [0, 1, 2])
 
-            pass
+            # Display the array as an image using Matplotlib
+            plt.imshow(matrix, cmap='binary', interpolation='nearest')
+
+            # Set custom tick labels for both axes
+            plt.xticks(range(26), [dataset.int2symb[i ] for i in range(3, 29)])
+            plt.yticks(range(26), [dataset.int2symb[i ] for i in range(3, 29)])
+
+            plt.ylabel('True ')
+            plt.xlabel('Predicted ')
+            plt.title('Confusion Matrix')
+            plt.colorbar()  # Add color bar for reference
+            plt.show()

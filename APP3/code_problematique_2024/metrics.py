@@ -19,9 +19,16 @@ def edit_distance(x,y):
         return 1 + min(edit_distance(x[1:], y), edit_distance(x, y[1:]), edit_distance(x[1:], y[1:]))
 
 
-def confusion_matrix(true, pred, ignore=[]):
-    # Calcul de la matrice de confusion
+def confusion_matrix(true, pred, int2symb:dict, ignore=[]):
+    # Calculate the number of unique labels
 
-    # À compléter
+    # Initialize the confusion matrix
+    matrix = np.zeros((len(int2symb), len(int2symb)))
 
-    return None
+    # Populate the matrix
+    for t, p in zip(true, pred):
+        for i, j in zip(t, p):
+            if j not in ignore:
+                matrix[i, j] += 1
+    return matrix[3:, 3:]
+

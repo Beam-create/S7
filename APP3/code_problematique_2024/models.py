@@ -279,7 +279,6 @@ class trajectory2seq_attn_bi(nn.Module):
 
         # Boucle pour tous les symboles de sortie
         for i in range(max_len):
-            # ---------------------- Laboratoire 2 - Question 3 - Début de la section à compléter -----------------
             vec_emb = self.word_embedding(vec_in)
             vec_rnn, hidden = self.decoder_rnn(vec_emb, hidden)
 
