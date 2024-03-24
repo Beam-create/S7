@@ -23,8 +23,8 @@ if __name__ == '__main__':
     n_workers = 0           # Nombre de threads pour chargement des données (mettre à 0 sur Windows)
 
     # À compléter
-    batch_size = 32
-    lr = 0.01
+    batch_size = 64
+    lr = 0.005
     n_epochs = 50
 
     n_hidden = 15
@@ -111,7 +111,7 @@ if __name__ == '__main__':
 
                 # calcul distance Levenshtein
                 output_list = torch.argmax(output, dim=-1).detach().cpu().tolist()
-                target_seq_list = target_seq.cpu().tolist()
+                target_seq_list = target_seq.to(device).tolist()
                 M = len(output_list)
                 for i in range(M):
                     a = target_seq_list[i]
