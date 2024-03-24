@@ -16,19 +16,19 @@ if __name__ == '__main__':
     force_cpu = False           # Forcer a utiliser le cpu?
     trainning = True          # Entrainement?
     test = True                # Test?
-    display_attention = True
+    display_attention = False
     learning_curves = True     # Affichage des courbes d'entrainement?
     gen_test_images = True     # Génération images test?
     seed = 1                # Pour répétabilité
     n_workers = 0           # Nombre de threads pour chargement des données (mettre à 0 sur Windows)
 
-    batch_size = 80
-    n_epochs = 200
+    batch_size = 64
+    n_epochs = 50
     lr = 0.014
 
-    n_hidden = 15
-    n_layers = 3
-    train_val_split = 0.7
+    n_hidden = 10
+    n_layers = 2
+    train_val_split = 0.8
 
     # ---------------- Fin Paramètres et hyperparamètres ----------------#
 
@@ -59,7 +59,7 @@ if __name__ == '__main__':
 
     # Instanciation du model
     maxlen = {'in':dataset.max_len_seq, 'out':dataset.max_len_word}
-    model = trajectory2seq_attn(n_hidden, n_layers, dataset.int2symb, dataset.symb2int, dataset.dict_size,device, maxlen)
+    model = trajectory2seq_attn_bi(n_hidden, n_layers, dataset.int2symb, dataset.symb2int, dataset.dict_size,device, maxlen)
 
     # Afficher le résumé du model
     print('Model : \n', model, '\n')
@@ -118,7 +118,7 @@ if __name__ == '__main__':
                     b = output_list[i]
                     Ma = a.index(1)  # longueur mot a
                     Mb = b.index(1) if 1 in b else len(b)  # longueur mot b
-                    epoch_dist_train += edit_distance(a[:Ma], b[:Mb]) / batch_size
+                    epoch_dist_train += edit_distance(a[:Ma], b[:Mb]) / M
 
             print('Train - Epoch: {}/{} [{}/{} ({:.0f}%)] Average Loss: {:.6f} Average Edit Distance: {:.6f}'.format(
                     epoch, n_epochs, batch_size, len(dataload_train.dataset),

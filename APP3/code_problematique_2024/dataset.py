@@ -70,17 +70,26 @@ class HandwrittenWords(Dataset):
             word.extend((pad_word[0:(self.max_len_word - len(word))]))
             self.data[i][0] = word
 
+            # normalise input between 0 and 1
+            min_val = np.min(seq)
+            max_val = np.max(seq)
+            scaled_matrix = (seq - min_val) / (max_val - min_val)
+
             # Apply padding to input
-            seq_x = seq[0]
-            seq_y = seq[1]
+            seq_x = scaled_matrix[0]
+            seq_y = scaled_matrix[1]
 
             # Create padding np array
-            pad_seq_y = np.ones(self.max_len_seq - len(seq_y)) * seq_y[-1]
-            pad_seq_x = np.ones(self.max_len_seq - len(seq_x)) * seq_x[-1]
+            pad_seq_y = np.ones(self.max_len_seq - len(seq_y)) * 2
+            pad_seq_x = np.ones(self.max_len_seq - len(seq_x)) * 2
             seq_x = np.append(seq_x, pad_seq_x)
             seq_y = np.append(seq_y, pad_seq_y)
 
             self.data[i][1] = np.stack((seq_x, seq_y), axis=0)
+
+        # Return only 5 word
+        #data = self.data[0:3]
+        #self.data = data
 
     def __len__(self):
         return len(self.data)
