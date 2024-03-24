@@ -59,9 +59,9 @@ class HandwrittenWords(Dataset):
 
         pad_word = ['<eos>']
         [pad_word.append('<pad>') for i in range(1, self.max_len_word)]
-        pad_sequence = np.full((2, self.max_len_seq), -2)
-        pad_sequence[0][0] = -1
-        pad_sequence[1][0] = -1
+        pad_sequence = np.full((2, self.max_len_seq), 3)
+        pad_sequence[0][0] = 2
+        pad_sequence[1][0] = 2
         # print(len(pad_sequence))
 
         # Pad to length
@@ -74,10 +74,20 @@ class HandwrittenWords(Dataset):
             self.data[i][0] = word
 
             # apply padding to points
-            seq_min_val = -1*(np.floor(seq.min()))
-            # offset all vals in seq of seq_min_val
-            positive_seq = seq + seq_min_val
-            self.data[i][1] = np.concatenate((positive_seq, pad_sequence[:, :(self.max_len_seq - len(seq[1]))]), axis=1)
+            # TODO: Passer un filtre passbas au donnes dentree avec np.convolv
+            # seq_min_val = -1*(np.floor(seq.min()))
+            # # offset all vals in seq of seq_min_val
+            # positive_seq = seq + seq_min_val
+
+            # l1_norm = np.linalg.norm(seq, 1, axis=1, keepdims=True)
+            # l1_norm_seq = seq/l1_norm
+
+            min_val = np.min(seq)
+            max_val = np.max(seq)
+            scaled_matrix = (seq-min_val) / (max_val-min_val)
+
+            self.data[i][1] = np.concatenate((scaled_matrix, pad_sequence[:, :(self.max_len_seq - len(seq[1]))]), axis=1)
+            print("Sequence processed")
 
     def __len__(self):
         return len(self.data)
