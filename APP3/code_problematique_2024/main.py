@@ -14,9 +14,9 @@ if __name__ == '__main__':
 
     # ---------------- Paramètres et hyperparamètres ----------------#
     force_cpu = False           # Forcer a utiliser le cpu?
-    trainning = False          # Entrainement?
+    trainning = True          # Entrainement?
     test = True                # Test?
-    display_attention = True
+    display_attention = False
     learning_curves = True     # Affichage des courbes d'entrainement?
     gen_test_images = True     # Génération images test?
     seed = 1                # Pour répétabilité
@@ -26,7 +26,7 @@ if __name__ == '__main__':
     n_epochs = 150
     lr = 0.014
 
-    n_hidden = 10
+    n_hidden = 20
     n_layers = 2
     train_val_split = 0.8
 
@@ -35,7 +35,7 @@ if __name__ == '__main__':
     # Initialisation des variables
     if seed is not None:
         torch.manual_seed(seed) 
-        np.random.seed(seed)
+        #np.random.seed(seed)
 
     # Choix du device
     device = torch.device("cuda" if torch.cuda.is_available() and not force_cpu else "cpu")
@@ -59,7 +59,7 @@ if __name__ == '__main__':
 
     # Instanciation du model
     maxlen = {'in':dataset.max_len_seq, 'out':dataset.max_len_word}
-    model = trajectory2seq_attn_bi(n_hidden, n_layers, dataset.int2symb, dataset.symb2int, dataset.dict_size,device, maxlen)
+    model = trajectory2seq_attn(n_hidden, n_layers, dataset.int2symb, dataset.symb2int, dataset.dict_size,device, maxlen)
 
     # Afficher le résumé du model
     print('Model : \n', model, '\n')
@@ -299,7 +299,7 @@ if __name__ == '__main__':
 
             # Affichage de la matrice de confusion
             matrix = confusion_matrix(true_val_list, pred_val_list, dataset.int2symb, [0, 1, 2])
-
+            print("sum matrix :", np.sum(matrix))
             # Display the array as an image using Matplotlib
             plt.imshow(matrix, cmap='binary', interpolation='nearest')
 
