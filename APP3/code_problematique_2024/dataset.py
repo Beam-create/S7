@@ -23,14 +23,17 @@ class HandwrittenWords(Dataset):
         self.symb2int = {start_symbol:0, stop_symbol:1, pad_symbol:2}
         cpt_symb = 3
 
+        # Création du dictionnaire
+        alphabet = 'abcdefghijklmnopqrstuvwxyz'
+        for i, letter in enumerate(alphabet, start=3):
+            self.symb2int[letter] = i
+            cpt_symb += 1
+
         # Extraction des symboles
         for i, data in enumerate(self.data):
             word = data[0]
             car_seq = []
             for symb in word:
-                if symb not in self.symb2int:
-                    self.symb2int[symb] = cpt_symb
-                    cpt_symb += 1
                 car_seq.extend(symb)
             data[0] = car_seq
 

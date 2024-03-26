@@ -16,7 +16,7 @@ if __name__ == '__main__':
     force_cpu = False           # Forcer a utiliser le cpu?
     trainning = False          # Entrainement?
     test = True                # Test?
-    display_attention = False
+    display_attention = True
     learning_curves = True     # Affichage des courbes d'entrainement?
     gen_test_images = True     # Génération images test?
     seed = 1                # Pour répétabilité
@@ -139,8 +139,6 @@ if __name__ == '__main__':
                 loss = criterion(output.view((-1, model.dict_size)), target.view(-1))
                 running_loss_val += loss.item()
 
-
-
                 # calcul de la distance d'édition
                 output_list = torch.argmax(output, dim=-1).detach().cpu().tolist()
                 target_seq_list = target.cpu().tolist()
@@ -195,17 +193,58 @@ if __name__ == '__main__':
 
     if test:
         with torch.no_grad():
+
+            # Instanciation de l'ensemble de données
+            dataset_test = HandwrittenWords('data_test.p', device)
+            print('Test data : ', len(dataset_test))
+
+            # Instanciation des dataloaders
+            dataload_test = DataLoader(dataset_test, batch_size=batch_size, shuffle=True, num_workers=n_workers)
+
             model = torch.load('model.pt')
             criterion = nn.CrossEntropyLoss(ignore_index=2)
 
             true_val_list = []
             pred_val_list = []
+            running_loss_test = 0
+            dist_test = 0
 
-            for i in range(50):
+            # Évaluation des données de test
+            for batch_idx, data in enumerate(dataload_test):
+                # Formatage des données
+                seq, target = data
+
+                # Forward
+                output, hidden, attn = model(seq)
+                loss = criterion(output.view((-1, model.dict_size)), target.view(-1))
+                running_loss_test += loss.item()
+
+                # calcul de la distance d'édition
+                output_list = torch.argmax(output, dim=-1).detach().cpu().tolist()
+                target_seq_list = target.cpu().tolist()
+                M = len(output_list)
+                for i in range(M):
+                    a = target_seq_list[i]
+                    b = output_list[i]
+                    Ma = a.index(1)  # longueur mot a
+                    Mb = b.index(1) if 1 in b else len(b)  # longueur mot b
+                    dist_test += edit_distance(a[:Ma], b[:Mb]) / M
+
+                    # Add output and target to confusion matrix list
+                    pred_val_list.append(b)
+                    true_val_list.append(a)
+
+            print('Test - Average Loss: {:.6f} Average Edit Distance: {:.6f}'.format(
+                     running_loss_test / (batch_idx + 1),
+                    dist_test/ len(dataload_test)), end='\r')
+            print("")
+
+            # Affichage des résultats de test
+            for i in range(5):
                 # Find a random data in dataset
-                idx = np.random.randint(0, len(dataset))
+                idx = np.random.randint(0, len(dataset_test))
 
-                input, target = dataset[idx]
+                input, target = dataset_test[idx]
 
                 # Forward, loss and distance
                 output, hidden, attn = model(input.unsqueeze(0))
@@ -219,10 +258,6 @@ if __name__ == '__main__':
                 Mb = b.index(1) if 1 in b else len(b)  # longueur mot b
                 epoch_dist_train = edit_distance(a[:Ma], b[:Mb])
 
-                # Add output and target to confusion matrix list
-                pred_val_list.append(b)
-                true_val_list.append(a)
-
                 # Show results
                 output = output.squeeze(0)
                 word_pred = [dataset.int2symb[j] for j in torch.argmax(output, dim=-1).tolist()]
@@ -233,6 +268,8 @@ if __name__ == '__main__':
                 print("Loss         :", loss.item())
                 print("Distance     :", epoch_dist_train)
                 print("")
+
+                # Affichage de l'attention
                 if display_attention:
                     # For each letter of the output, display the attention of the model on the input trajectory
                     # The input trajectory is the same for each letter of the output, but where the attention is the highest, darker the points and the line connecting them are
@@ -247,7 +284,7 @@ if __name__ == '__main__':
                     for i in range(len(output)):
                         plt.subplot(len(output), 1, i + 1)
                         # Get the attention weights for the i-th letter
-                        colors = attn[:,i,:].detach().cpu().numpy()
+                        colors = attn[0, 0, :].detach().cpu().numpy()
                         colors = 0.2 + 0.8*(1 - colors)
                         # Get the trajectory
                         traj = input.detach().cpu().numpy()
@@ -259,18 +296,6 @@ if __name__ == '__main__':
                         plt.title(word[i])
 
                     plt.show()
-                #dataset.visualisation(idx)
-            # Évaluation
-            # À compléter
-
-            # Charger les données de tests
-            # À compléter
-
-            # Affichage de l'attention
-            # À compléter (si nécessaire)
-
-            # Affichage des résultats de test
-            # À compléter
 
             # Affichage de la matrice de confusion
             matrix = confusion_matrix(true_val_list, pred_val_list, dataset.int2symb, [0, 1, 2])
