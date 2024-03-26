@@ -94,7 +94,7 @@ class trajectory2seq_attn_bi(nn.Module):
 
         # Definition des couches
         # Couches pour rnn
-        self.encoder_rnn = nn.LSTM(2, self.hidden_dim, self.n_layers, batch_first=True, bidirectional=True, dropout=0.35)
+        self.encoder_rnn = nn.GRU(2, self.hidden_dim, self.n_layers, batch_first=True, bidirectional=True, dropout=0.35)
 
         self.word_embedding = nn.Embedding(self.dict_size, self.hidden_dim)
         self.decoder_rnn = nn.RNN(self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True)
@@ -113,7 +113,8 @@ class trajectory2seq_attn_bi(nn.Module):
     def encoder(self, x):
         x = x.permute(0, 2, 1)
         batch_size = x.shape[0]
-        y, (h, c) = self.encoder_rnn(x.type(torch.float32))
+        # y, (h, c) = self.encoder_rnn(x.type(torch.float32))
+        y, h = self.encoder_rnn(x.type(torch.float32))
         h = h.view(batch_size, -1)
         h = self.fc_enc2dec(h)
         h = h.view(self.n_layers, batch_size, self.hidden_dim)

@@ -14,7 +14,7 @@ if __name__ == '__main__':
 
     # ---------------- Paramètres et hyperparamètres ----------------#
     force_cpu = False           # Forcer a utiliser le cpu?
-    training = False           # Entrainement?
+    training = True           # Entrainement?
     test = True                # Test?
     learning_curves = True     # Affichage des courbes d'entrainement?
     gen_test_images = True     # Génération images test?
@@ -24,10 +24,10 @@ if __name__ == '__main__':
 
     # À compléter
     batch_size = 64
-    lr = 0.02
-    n_epochs = 75
+    lr = 0.014
+    n_epochs = 150
 
-    n_hidden = 13
+    n_hidden = 14
     n_layers = 2
     validation_split = 0.8
 
@@ -145,7 +145,6 @@ if __name__ == '__main__':
                 best_val_loss = running_loss_val
                 torch.save(model, 'model.pt')
 
-
             # Affichage
             if learning_curves:
                 train_loss.append(running_loss_train/len(train_loader))
@@ -175,73 +174,43 @@ if __name__ == '__main__':
         with torch.no_grad():
             model = torch.load('model.pt')
             criterion = nn.CrossEntropyLoss(ignore_index=2)
-            test_dataset = dict()
-            # testset_filename = 'test.p'
-            # with open(testset_filename, 'rb') as fp:
-            #     test_dataset = pickle.load(fp)
+            test_dataset = []
+            test_dataset =  HandwrittenWords(filename='data_test.p', is_test=True)
+            test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=n_workers)
+            running_loss_test = 0
+            test_dist = 0
             pred_list = []
             target_list =[]
-            test_dist = 0
-            num_of_samples = 15
-            for i in range(num_of_samples):
-                idx = np.random.randint(0, len(dataset))
-                input, target = dataset[idx]
+            for batch_idx, data  in enumerate(test_loader):
+                input, target = data
                 input, target = input.to(device), target.to(device)
-                output, hidden, attn = model(input.unsqueeze(0))
-                output = output.squeeze(0)
+                output, hidden, attn = model(input)
+                # output = output.squeeze(0)
                 loss = criterion(output.view((-1, model.dict_size)), target.view(-1))
+                running_loss_test += loss.item()
 
-                a = target.cpu().tolist()
-                target_list.append(a)
-                b = torch.argmax(output, dim=-1).cpu().tolist()
-                pred_list.append(b)
-                Ma = a.index(1)  # longueur mot a
-                Mb = b.index(1) if 1 in b else len(b)  # longueur mot b
-                test_dist = edit_distance(a[:Ma], b[:Mb])
-                output = output.squeeze(0)
-                word_pred = [dataset.int2symb[j] for j in torch.argmax(output, dim=-1).tolist()]
-                word_target = [dataset.int2symb[j] for j in target.tolist()]
+                output_list = torch.argmax(output, dim=-1).detach().cpu().tolist()
+                target_seq_list = target.cpu().tolist()
+                M = len(output_list)
+                for i in range(M):
+                    a = target_seq_list[i]
+                    target_list.append(a)
+                    b = output_list[i]
+                    pred_list.append(b)
+                    Ma = a.index(1)
+                    Mb = b.index(1) if 1 in b else len(b)
+                    test_dist += edit_distance(a[:Ma], b[:Mb]) / M
+            print('Test - Average Loss: {:.6f} Average Edit Distance: {:.6f})'.format(
+                running_loss_test / len(test_loader), test_dist / len(test_loader)), end='\r')
+            print('\n')
 
-                # Affichage des résultats de test
-                print("Prediction: ", word_pred)
-                print("Target: ", word_target)
-                print("Loss: ", loss.item())
-                print("Distance: ", test_dist)
-
-                if display_attention:
-                    # For each letter of the output, display the attention of the model on the input trajectory
-                    # The input trajectory is the same for each letter of the output, but where the attention is the highest, darker the points and the line connecting them are
-                    #  The attention weights are a tensor of the length of the input trajectory
-                    # Attention weights are a tensor of shape (1, len(input), len(output)) -> (1, len(output), len(input))
-                    # attn = attn.permute(0, 2, 1)
-
-                    # Choose the size of the figure depending on the number of letters in the output
-                    plt.figure(figsize=(1, 1 * len(output)))
-                    # Create a subplot for each letter of the output
-                    word = [dataset.int2symb[i] for i in b]
-                    for i in range(len(output)):
-                        plt.subplot(len(output), 1, i + 1)
-                        # Get the attention weights for the i-th letter
-                        colors = attn[:, i, :].detach().cpu().numpy()
-                        colors = 0.2 + 0.8 * (1 - colors)
-                        # Get the trajectory
-                        traj = input.detach().cpu().numpy()
-                        # Plot the trajectory
-                        # plt.plot(traj[0], traj[1], 'b', linewidth=0.5)
-                        # Plot the attention weights on the trajectory (darker points and lines where the attention is higher)
-                        plt.scatter(traj[0], traj[1], c=colors, cmap='gray')
-
-                        plt.title(word[i])
-
-                    plt.show()
-
-            conf_matrix = confusion_matrix(target_list, pred_list, dataset.dict_size, ignore=[2])
+            conf_matrix = confusion_matrix(target_list, pred_list, dataset.dict_size, ignore=[0,1,2])
             # Plotting the matrix
             plt.imshow(conf_matrix, cmap='binary', interpolation='nearest')
             plt.colorbar()
             # Set the labels using the dictionary
-            plt.xticks(range(dataset.dict_size), [dataset.int2symb[i] for i in range(dataset.dict_size)], rotation=45, ha="right")
-            plt.yticks(range(dataset.dict_size), [dataset.int2symb[i] for i in range(dataset.dict_size)])
+            plt.xticks(range(dataset.dict_size-3), [dataset.int2symb[i] for i in range(3, dataset.dict_size)], rotation=45, ha="right")
+            plt.yticks(range(dataset.dict_size-3), [dataset.int2symb[i] for i in range(3, dataset.dict_size)])
 
             # Set title and labels
             plt.xlabel('Predicted')
@@ -249,63 +218,27 @@ if __name__ == '__main__':
             plt.title('Confusion Matrix')
             plt.show()
 
+            np.random.seed(None)
+            for i in range(5):
+                rdm_idx = np.random.randint(len(test_dataset))
+                input, target = test_dataset[rdm_idx]
+                input, target = input.to(device).unsqueeze(0), target.to(device)
 
 
-        # Charger les données de tests
-
-        # for batch_idx, data in enumerate(test_dataset):
-        #     seq, label = data
-        #     output, hidden, attn = model(seq)
-        #
-        #     loss = criterion(output.view((-1, model.dict_size)), label.view(-1))
-        #     a = label.cpu().tolist()
-        #     b = torch.argmax(output, dim=-1).cpu().tolist()
-        #     Ma = a.index(1) # longueur mot a
-        #     Mb = b.index(1) if 1 in b else len(b) #longueur mot b
-        #     test_dist = edit_distance(a[:Ma], b[:Mb])
-        #
-        #     output = output.squeeze(0)
-        #     word_pred = [dataset.int2symb[j] for j in torch.argmax(output, dim=-1).tolist()]
-        #     word_target = [dataset.int2symb[j] for j in label.tolist()]
-        #
-        # # Affichage de l'attention
-        # # À compléter (si nécessaire)
-        #
-        #     # Affichage des résultats de test
-        #     print("Prediction: ", word_pred)
-        #     print("Target: ", word_target)
-        #     print("Loss: ", loss.item())
-        #     print("Distance: ", test_dist)
-        #     print("\n")
-        #
-        #     if display_attention:
-        #         # For each letter of the output, display the attention of the model on the input trajectory
-        #         # The input trajectory is the same for each letter of the output, but where the attention is the highest, darker the points and the line connecting them are
-        #         #  The attention weights are a tensor of the length of the input trajectory
-        #         # Attention weights are a tensor of shape (1, len(input), len(output)) -> (1, len(output), len(input))
-        #         # attn = attn.permute(0, 2, 1)
-        #
-        #         # Choose the size of the figure depending on the number of letters in the output
-        #         plt.figure(figsize=(1, 1 * len(output)))
-        #         # Create a subplot for each letter of the output
-        #         word = [dataset.int2symb[i] for i in b]
-        #         for i in range(len(output)):
-        #             plt.subplot(len(output), 1, i + 1)
-        #             # Get the attention weights for the i-th letter
-        #             colors = attn[:, i, :].detach().cpu().numpy()
-        #             colors = 0.2 + 0.8 * (1 - colors)
-        #             # Get the trajectory
-        #             traj = seq.detach().cpu().numpy()
-        #             # Plot the trajectory
-        #             # plt.plot(traj[0], traj[1], 'b', linewidth=0.5)
-        #             # Plot the attention weights on the trajectory (darker points and lines where the attention is higher)
-        #             plt.scatter(traj[0], traj[1], c=colors, cmap='gray')
-        #
-        #             plt.title(word[i])
-        #
-        #         plt.show()
-        
-        # Affichage de la matrice de confusion
-        # À compléter
-
-        pass
+                output, hidden, attn = model(input)
+                output_list = torch.argmax(output, dim=-1).detach().cpu().tolist()
+                target_list = target.cpu().tolist()
+                pred_word = []
+                target_word = []
+                pred_word.append([dataset.int2symb[i] for i in output_list[0]])
+                target_word.append([dataset.int2symb[i] for i in target_list])
+                M = len(output_list)
+                for i in range(M):
+                    a = target_list
+                    b = output_list[i]
+                    Ma = a.index(1)
+                    Mb = b.index(1) if 1 in b else len(b)
+                    test_distance = edit_distance(a[:Ma], b[:Mb])
+                print(f"Prediction: {pred_word}")
+                print(f"Target: {target_word}")
+                print(f'Distance: {test_distance}')

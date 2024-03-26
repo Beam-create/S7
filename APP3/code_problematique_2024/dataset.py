@@ -8,7 +8,7 @@ import pickle
 class HandwrittenWords(Dataset):
     """Ensemble de donnees de mots ecrits a la main."""
 
-    def __init__(self, filename):
+    def __init__(self, filename, is_test=False):
         # Lecture du text
         self.pad_symbol     = pad_symbol = '<pad>'
         self.start_symbol   = start_symbol = '<sos>'
@@ -21,14 +21,16 @@ class HandwrittenWords(Dataset):
         self.symb2int = {start_symbol:0, stop_symbol:1, pad_symbol:2}
         cpt_symb = 3
 
+        alphabet = 'abcdefghijklmnopqrstuvwxyz'
+        for i, letter in enumerate(alphabet, start=3):
+            self.symb2int[letter] = i
+            cpt_symb += 1
+
         # Extraction des symboles
         for i, data in enumerate(self.data):
             word = data[0]
             car_seq = []
             for symb in word:
-                if symb not in self.symb2int:
-                    self.symb2int[symb] = cpt_symb
-                    cpt_symb += 1
                 car_seq.extend(symb)
             data[0] = car_seq
 
@@ -56,6 +58,8 @@ class HandwrittenWords(Dataset):
 
         self.max_len_word += 1
         self.max_len_seq += 1
+        if is_test:
+            self.max_len_seq = 458
 
         pad_word = ['<eos>']
         [pad_word.append('<pad>') for i in range(1, self.max_len_word)]
@@ -87,7 +91,6 @@ class HandwrittenWords(Dataset):
             scaled_matrix = (seq-min_val) / (max_val-min_val)
 
             self.data[i][1] = np.concatenate((scaled_matrix, pad_sequence[:, :(self.max_len_seq - len(seq[1]))]), axis=1)
-            print("Sequence processed")
 
     def __len__(self):
         return len(self.data)

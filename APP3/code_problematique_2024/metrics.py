@@ -29,7 +29,7 @@ def confusion_matrix(true, pred, dict_size, ignore=[]):
     for t, p in zip(true, pred):
         for i, j in zip(t, p):
             if j not in ignore:
-                matrix[t, p] += 1
-    return matrix
+                matrix[i, j] += 1
+    return matrix[3:,3:]
 
 
