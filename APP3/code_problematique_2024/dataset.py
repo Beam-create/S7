@@ -77,18 +77,15 @@ class HandwrittenWords(Dataset):
             word.extend((pad_word[0:(self.max_len_word - len(word))]))
             self.data[i][0] = word
 
-            # apply padding to points
-            # TODO: Passer un filtre passbas au donnes dentree avec np.convolv
-            # seq_min_val = -1*(np.floor(seq.min()))
-            # # offset all vals in seq of seq_min_val
-            # positive_seq = seq + seq_min_val
+            min_val_x = np.min(seq[0])
+            max_val_x = np.max(seq[0])
 
-            # l1_norm = np.linalg.norm(seq, 1, axis=1, keepdims=True)
-            # l1_norm_seq = seq/l1_norm
+            min_val_y = np.min(seq[1])
+            max_val_y = np.max(seq[1])
 
-            min_val = np.min(seq)
-            max_val = np.max(seq)
-            scaled_matrix = (seq-min_val) / (max_val-min_val)
+            scaled_x = (seq[0]-min_val_x) / (max_val_x-min_val_x)
+            scaled_y = (seq[1]-min_val_y) / (max_val_y-min_val_y)
+            scaled_matrix = np.concatenate((scaled_x.reshape(1,-1), scaled_y.reshape(1,-1)), axis=0)
 
             self.data[i][1] = np.concatenate((scaled_matrix, pad_sequence[:, :(self.max_len_seq - len(seq[1]))]), axis=1)
 

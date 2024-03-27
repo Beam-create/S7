@@ -17,15 +17,14 @@ if __name__ == '__main__':
     training = True           # Entrainement?
     test = True                # Test?
     learning_curves = True     # Affichage des courbes d'entrainement?
-    gen_test_images = True     # Génération images test?
-    display_attention = False
+    display_attention = True
     seed = 3221                # Pour répétabilité
     n_workers = 0           # Nombre de threads pour chargement des données (mettre à 0 sur Windows)
 
-    # À compléter
+    # Hyperparametres
     batch_size = 64
-    lr = 0.014
-    n_epochs = 150
+    lr = 0.01
+    n_epochs = 100
 
     n_hidden = 14
     n_layers = 2
@@ -135,6 +134,11 @@ if __name__ == '__main__':
                     Ma = a.index(1)
                     Mb = b.index(1) if 1 in b else len(b)
                     epoch_dist_val += edit_distance(a[:Ma], b[:Mb])/M
+
+            print('Training - Epoch: {}/{} Average Loss: {:.6f} Average Edit Distance: {:.6f})'.format(
+                epoch, n_epochs, running_loss_train/len(train_loader),
+                epoch_dist_train/len(train_loader)), end='\r')
+            print('\n')
             print('Validation - Epoch: {}/{} Average Loss: {:.6f} Average Edit Distance: {:.6f})'.format(
                 epoch, n_epochs, running_loss_val/len(val_loader),
                 epoch_dist_val/len(val_loader)), end='\r')
@@ -200,13 +204,19 @@ if __name__ == '__main__':
                     Ma = a.index(1)
                     Mb = b.index(1) if 1 in b else len(b)
                     test_dist += edit_distance(a[:Ma], b[:Mb]) / M
-            print('Test - Average Loss: {:.6f} Average Edit Distance: {:.6f})'.format(
+            print('Test - Average Loss: {:.6f} Average Edit Distance: {:.6f}'.format(
                 running_loss_test / len(test_loader), test_dist / len(test_loader)), end='\r')
             print('\n')
 
             conf_matrix = confusion_matrix(target_list, pred_list, dataset.dict_size, ignore=[0,1,2])
+            conf_matrix = np.array(conf_matrix)
+            row_mins = np.min(conf_matrix, axis=0, keepdims=True)
+            row_maxs = np.max(conf_matrix, axis=0, keepdims=True)
+
+            # Normalize each value in the row
+            normalized_arr = (conf_matrix - row_mins) / (row_maxs - row_mins)
             # Plotting the matrix
-            plt.imshow(conf_matrix, cmap='binary', interpolation='nearest')
+            plt.imshow(normalized_arr, cmap='binary')
             plt.colorbar()
             # Set the labels using the dictionary
             plt.xticks(range(dataset.dict_size-3), [dataset.int2symb[i] for i in range(3, dataset.dict_size)], rotation=45, ha="right")
@@ -226,6 +236,8 @@ if __name__ == '__main__':
 
 
                 output, hidden, attn = model(input)
+                loss = criterion(output.view((-1, model.dict_size)), target.view(-1))
+                valid_loss = loss.item()
                 output_list = torch.argmax(output, dim=-1).detach().cpu().tolist()
                 target_list = target.cpu().tolist()
                 pred_word = []
@@ -241,4 +253,31 @@ if __name__ == '__main__':
                     test_distance = edit_distance(a[:Ma], b[:Mb])
                 print(f"Prediction: {pred_word}")
                 print(f"Target: {target_word}")
+                print(f"Loss: {valid_loss}")
                 print(f'Distance: {test_distance}')
+
+                if display_attention:
+                    output = output.squeeze(0)
+                    # Choose the size of the figure depending on the number of letters in the output
+                    plt.figure(figsize=(1, 1 * len(output)))
+                    # Create a subplot for each letter of the output
+                    word = [dataset.int2symb[i] for i in b]
+                    for i in range(len(output)):
+                        plt.subplot(len(output), 1, i + 1)
+                        # Get the attention weights for the i-th letter
+                        colors = attn[0, i, :].detach().cpu().numpy()
+                        colors = 0.2 + 0.8 * (1 - colors)
+                        # Get the trajectory
+                        traj = input.squeeze(0)
+                        traj = traj.detach().cpu().numpy()
+                        # Plot the trajectory
+                        # plt.plot(traj[0], traj[1], 'b', linewidth=0.5)
+                        # Plot the attention weights on the trajectory (darker points and lines where the attention is higher)
+                        plt.scatter(traj[0], traj[1])
+                        plt.scatter(traj[0], traj[1], c=colors, cmap='Greens')
+                        plt.xlim(0,1.1)
+                        plt.ylim(0,1.1)
+
+                        plt.title(word[i])
+
+                    plt.show()
